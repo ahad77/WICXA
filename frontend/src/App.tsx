@@ -1,35 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom';
-import logo from './assets/logo.png'; // Fixed extension back to .jpg as requested earlier, modify if needed
-
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-
-const generateDropTees = (category: 'Men' | 'Women') =>
-  Array.from({ length: 16 }).map((_, i) => ({
-    id: `${category.toLowerCase()}-tee-${i}`,
-    name: `${category === 'Men' ? 'Oversized Heavy' : 'Cropped Boxy'} Drop Tee 0${i + 1}`,
-    price: '1,190.00',
-    description:
-      'Experience premium comfort and performance with our Player Edition Jersey, designed with a slim athletic fit similar to what professional players wear on the field. Made with lightweight and breathable fabric, it offers a stylish look, comfort, and flexibility for everyday wear or match days.\n\n• Material: 100% Premium 240GSM Heavyweight Cotton\n• Fit: Model is 6\'1" wearing a size Large for a relaxed, boxy drape.',
-    images:
-      category === 'Men'
-        ? [
-            'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1562157873-818bc0726f68?q=80&w=800&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?q=80&w=800&auto=format&fit=crop',
-          ]
-        : [
-            'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=800&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=800&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1434389678232-04ce6c4cd42b?q=80&w=800&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?q=80&w=800&auto=format&fit=crop',
-          ],
-  }));
-
-const mensDropTees = generateDropTees('Men');
-const womensDropTees = generateDropTees('Women');
-const allMockProducts = [...mensDropTees, ...womensDropTees];
+import logo from './assets/logo.png'; 
 
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 
@@ -383,7 +354,7 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
 
 // ─── SEARCH OVERLAY ───────────────────────────────────────────────────────────
 
-const SearchOverlay = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+const SearchOverlay = ({ isOpen, onClose, products }: { isOpen: boolean; onClose: () => void; products: any[] }) => {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
   useEffect(() => { if (!isOpen) setQuery(''); }, [isOpen]);
@@ -391,9 +362,9 @@ const SearchOverlay = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
   const results = query.trim() === ''
     ? []
-    : allMockProducts.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+    : products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
 
-  const suggested = allMockProducts.slice(0, 4);
+  const suggested = products.slice(0, 4);
 
   return (
     <div className="overlay-in" style={{
@@ -449,7 +420,7 @@ const SearchOverlay = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '20px 16px' }}>
               {results.map((p) => (
-                <div key={p.id} onClick={() => { onClose(); navigate(`/product/${p.id}`); }} style={{ cursor: 'pointer' }}>
+                <div key={p._id || p.id} onClick={() => { onClose(); navigate(`/product/${p._id || p.id}`); }} style={{ cursor: 'pointer' }}>
                   <div style={{ overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)', marginBottom: 10 }}>
                     <img src={p.images[0]} alt={p.name} className="img-zoom" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
@@ -475,7 +446,7 @@ const SearchOverlay = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
               <p style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 18, fontFamily: 'Inter, sans-serif' }}>Suggested</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 14px' }}>
                 {suggested.map((p) => (
-                  <div key={p.id} onClick={() => { onClose(); navigate(`/product/${p.id}`); }} style={{ cursor: 'pointer' }}>
+                  <div key={p._id || p.id} onClick={() => { onClose(); navigate(`/product/${p._id || p.id}`); }} style={{ cursor: 'pointer' }}>
                     <div style={{ overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)', marginBottom: 10 }}>
                       <img src={p.images[0]} alt={p.name} className="img-zoom" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
@@ -552,7 +523,7 @@ const ProductCard = ({ product, addToCart, index }: any) => {
       onMouseLeave={() => setHovered(false)}
     >
       <div style={{ position: 'relative', overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)', marginBottom: 14 }}>
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/product/${product._id || product.id}`}>
           <img
             src={hovered && product.images[1] ? product.images[1] : product.images[0]}
             alt={product.name}
@@ -572,7 +543,7 @@ const ProductCard = ({ product, addToCart, index }: any) => {
           Quick Add +
         </button>
       </div>
-      <Link to={`/product/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <Link to={`/product/${product._id || product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', lineHeight: 1.4 }}>{product.name}</p>
         <p style={{ fontSize: 12, color: 'var(--stone)', marginTop: 5 }}>BDT {product.price}</p>
       </Link>
@@ -591,7 +562,7 @@ const ProductGrid = ({ title, products, addToCart }: any) => {
         <span className="reveal reveal-delay-1" style={{ fontSize: 11, color: 'var(--stone)', letterSpacing: '0.16em', textTransform: 'uppercase' }}>{products.length} pieces</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px 20px' }}>
-        {products.map((p: any, i: number) => <ProductCard key={p.id} product={p} addToCart={addToCart} index={i} />)}
+        {products.map((p: any, i: number) => <ProductCard key={p._id || p.id} product={p} addToCart={addToCart} index={i} />)}
       </div>
     </section>
   );
@@ -599,7 +570,7 @@ const ProductGrid = ({ title, products, addToCart }: any) => {
 
 // ─── HOME PAGE ────────────────────────────────────────────────────────────────
 
-const HomePage = ({ addToCart }: any) => {
+const HomePage = ({ addToCart, products }: any) => {
   useReveal();
   useGridReveal();
   const heroRef = useRef<HTMLDivElement>(null);
@@ -705,7 +676,7 @@ const HomePage = ({ addToCart }: any) => {
 
       {/* Featured products strip */}
       <section style={{ padding: '0 0 100px', borderTop: '1px solid var(--warm-mid)' }}>
-        <ProductGrid title="Featured Drops" products={mensDropTees.slice(0, 8)} addToCart={addToCart} />
+        <ProductGrid title="Featured Drops" products={products.filter((p: any) => p.category === 'Men').slice(0, 8)} addToCart={addToCart} />
       </section>
 
       {/* Brand statement */}
@@ -721,9 +692,9 @@ const HomePage = ({ addToCart }: any) => {
 
 // ─── COLLECTION PAGES ─────────────────────────────────────────────────────────
 
-const CollectionPage = ({ gender, addToCart }: { gender: 'Men' | 'Women'; addToCart: any }) => {
+const CollectionPage = ({ gender, addToCart, products }: { gender: 'Men' | 'Women'; addToCart: any; products: any[] }) => {
   useReveal();
-  const products = gender === 'Men' ? mensDropTees : womensDropTees;
+  const categoryProducts = products.filter(p => p.category === gender);
   const img = gender === 'Men'
     ? 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?q=80&w=2000&auto=format&fit=crop'
     : 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=2000&auto=format&fit=crop';
@@ -739,14 +710,14 @@ const CollectionPage = ({ gender, addToCart }: { gender: 'Men' | 'Women'; addToC
           fontSize: 56, color: '#fff', letterSpacing: '0.1em',
         }}>{gender}'s Collection</h1>
       </header>
-      <ProductGrid title="Drop Tees" products={products} addToCart={addToCart} />
+      <ProductGrid title="Drop Tees" products={categoryProducts} addToCart={addToCart} />
     </div>
   );
 };
 
 // ─── PRODUCT DETAIL ───────────────────────────────────────────────────────────
 
-const ProductDetailPage = ({ addToCart }: any) => {
+const ProductDetailPage = ({ addToCart, products }: any) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedSize, setSelectedSize] = useState('M');
@@ -755,8 +726,10 @@ const ProductDetailPage = ({ addToCart }: any) => {
   const [sizeChart, setSizeChart] = useState(false);
   useReveal();
 
-  const product = allMockProducts.find((p) => p.id === id) || allMockProducts[0];
+  const product = products.find((p: any) => p._id === id || p.id === id);
   const sizes = ['S', 'M', 'L', 'XL', '2XL'];
+
+  if (!product) return <div style={{ padding: '120px 48px', textAlign: 'center', minHeight: '60vh' }}>Loading...</div>;
 
   return (
     <div className="page-enter" style={{ maxWidth: 1400, margin: '0 auto', padding: '60px 48px' }}>
@@ -767,7 +740,7 @@ const ProductDetailPage = ({ addToCart }: any) => {
             <img src={product.images[activeImg]} alt={product.name} className="img-zoom" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-            {product.images.map((img, i) => (
+            {product.images.map((img: string, i: number) => (
               <button key={i} onClick={() => setActiveImg(i)} style={{
                 padding: 0, border: i === activeImg ? '2px solid var(--ink)' : '2px solid transparent',
                 cursor: 'pointer', overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)',
@@ -914,7 +887,6 @@ const CartPage = ({ cartItems }: { cartItems: any[] }) => {
     </div>
   );
 };
-
 
 // ─── SIGN UP PAGE ─────────────────────────────────────────────────────────────
 
@@ -1313,7 +1285,6 @@ const FAQPage = () => (
   </SimpleTextPage>
 );
 
-
 // ─── PAGE TRANSITION WRAPPER ──────────────────────────────────────────────────
 
 const PageWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -1327,6 +1298,24 @@ const App = () => {
   const [cart, setCart] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  
+  // STATE FOR MONGODB DATA
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // FETCHING FROM YOUR NEW LIVE RENDER BACKEND
+  useEffect(() => {
+    fetch('https://wicxa.onrender.com/api/products')
+      .then(res => res.json())
+      .then(data => {
+        setProducts(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching products:", err);
+        setLoading(false);
+      });
+  }, []);
 
   const addToCart = useCallback((product: any, selectedSize = 'L', quantity = 1) => {
     setCart((prev) => [...prev, { ...product, selectedSize, quantity }]);
@@ -1340,25 +1329,30 @@ const App = () => {
       <div style={{ minHeight: '100vh', background: 'var(--cream)', color: 'var(--ink)', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif', overflowX: 'hidden' }}>
         <AnnouncementBar />
         <Navbar cartCount={cart.length} openSearch={() => setSearchOpen(true)} />
-        <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+        <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} products={products} />
         {toast && <Toast message={toast} onDone={() => setToast(null)} />}
         <main style={{ flex: 1 }}>
-          <PageWrapper>
-            <Routes>
-              <Route path="/" element={<HomePage addToCart={addToCart} />} />
-              <Route path="/men" element={<CollectionPage gender="Men" addToCart={addToCart} />} />
-              <Route path="/women" element={<CollectionPage gender="Women" addToCart={addToCart} />} />
-              <Route path="/cart" element={<CartPage cartItems={cart} />} />
-              <Route path="/product/:id" element={<ProductDetailPage addToCart={addToCart} />} />
-              <Route path="/signup" element={<SignUpPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              {/* New Pages */}
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/faq" element={<FAQPage />} />
-            </Routes>
-          </PageWrapper>
+          {loading ? (
+            <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <p style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 24, fontStyle: 'italic', color: 'var(--stone)' }}>Loading Collection...</p>
+            </div>
+          ) : (
+            <PageWrapper>
+              <Routes>
+                <Route path="/" element={<HomePage addToCart={addToCart} products={products} />} />
+                <Route path="/men" element={<CollectionPage gender="Men" addToCart={addToCart} products={products} />} />
+                <Route path="/women" element={<CollectionPage gender="Women" addToCart={addToCart} products={products} />} />
+                <Route path="/cart" element={<CartPage cartItems={cart} />} />
+                <Route path="/product/:id" element={<ProductDetailPage addToCart={addToCart} products={products} />} />
+                <Route path="/signup" element={<SignUpPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/faq" element={<FAQPage />} />
+              </Routes>
+            </PageWrapper>
+          )}
         </main>
         <Footer />
       </div>
