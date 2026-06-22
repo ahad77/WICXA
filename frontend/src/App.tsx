@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, u
 import logo from './assets/logo.png'; 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // ─── UTILITY COMPONENTS (SCROLLING) ───────────────────────────────────────────
 
@@ -1735,6 +1736,9 @@ const App = () => {
         
         {/* 2. FLOATING "GO TO TOP" BUTTON */}
         <GoToTopButton />
+        
+        {/* VERCEL SPEED INSIGHTS */}
+        <SpeedInsights />
       </div>
     </Router>
   );
