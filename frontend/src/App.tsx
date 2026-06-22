@@ -845,58 +845,8 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
 
 const CartPage = ({ cartItems }: { cartItems: any[] }) => {
   useReveal();
+  const navigate = useNavigate();
   const total = cartItems.reduce((s, i) => s + parseFloat(i.price.replace(/,/g, '')), 0);
-
-  // --- NEW INVOICE GENERATION FUNCTION ---
-  const handleCheckout = () => {
-    const doc = new jsPDF();
-
-    // 1. Add WICXA Header
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(28);
-    doc.text("WICXA", 14, 22);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(140, 134, 128); // Stone color
-    doc.text("Unapologetic style for the modern landscape.", 14, 30);
-
-    // 2. Add Invoice Details
-    doc.setTextColor(13, 13, 13); // Ink color
-    doc.setFontSize(12);
-    doc.text("INVOICE", 14, 45);
-    doc.setFontSize(10);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 52);
-    doc.text(`Order ID: WX-${Math.floor(100000 + Math.random() * 900000)}`, 14, 58);
-
-    // 3. Create the Table Data
-    const tableColumn = ["Item Description", "Size", "Qty", "Price (BDT)"];
-    const tableRows = cartItems.map(item => [
-      item.name,
-      item.selectedSize,
-      item.quantity,
-      item.price
-    ]);
-
-    // 4. Draw the Table
-    autoTable(doc, {
-      startY: 65,
-      head: [tableColumn],
-      body: tableRows,
-      theme: 'striped',
-      headStyles: { fillColor: [13, 13, 13], textColor: [255, 255, 255] }, // Black header
-      styles: { font: 'helvetica', fontSize: 10 },
-    });
-
-    // 5. Add Total at the bottom
-    const finalY = (doc as any).lastAutoTable.finalY || 65;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(`Total: BDT ${total.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`, 14, finalY + 15);
-
-    // 6. Download the PDF!
-    doc.save("WICXA_Invoice.pdf");
-  };
 
   return (
     <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 48px', minHeight: '60vh' }}>
@@ -933,7 +883,7 @@ const CartPage = ({ cartItems }: { cartItems: any[] }) => {
               <span>Total</span><span>BDT {total.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
             </div>
             <button 
-              onClick={handleCheckout}
+              onClick={() => navigate('/checkout')}
               className="btn-shimmer" 
               style={{ width: '100%', padding: '16px 0', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, border: 'none', cursor: 'pointer' }}
             >
@@ -945,6 +895,314 @@ const CartPage = ({ cartItems }: { cartItems: any[] }) => {
     </div>
   );
 };
+
+// ─── CHECKOUT PAGE ────────────────────────────────────────────────────────────
+
+const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }) => {
+  useReveal();
+  const navigate = useNavigate();
+
+  // Redirect if cart is empty
+  useEffect(() => {
+    if (cartItems.length === 0) navigate('/cart');
+  }, [cartItems, navigate]);
+
+  // Form State
+  const [form, setForm] = useState({ name: '', address: '', phone: '', email: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Delivery State
+  const [deliveryZone, setDeliveryZone] = useState('ctg-reg');
+  
+  // Coupon State
+  const [coupon, setCoupon] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [couponMsg, setCouponMsg] = useState({ text: '', type: '' });
+  const [loading, setLoading] = useState(false);
+
+  // Math
+  const subtotal = cartItems.reduce((s, i) => s + parseFloat(i.price.replace(/,/g, '')), 0);
+  
+  const deliveryFee = 
+    deliveryZone === 'ctg-reg' ? 80 :
+    deliveryZone === 'ctg-urg' ? 150 : 130;
+
+  const grandTotal = (subtotal + deliveryFee) - discount;
+
+  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [field]: e.target.value });
+    if (errors[field]) setErrors({ ...errors, [field]: '' });
+  };
+
+  const applyCoupon = () => {
+    if (!coupon.trim()) return;
+    const code = coupon.toUpperCase();
+    if (code === 'WICXA10') {
+      setDiscount(subtotal * 0.10); // 10% off
+      setCouponMsg({ text: '10% Discount Applied!', type: 'success' });
+    } else if (code === 'FREESHIP') {
+      setDiscount(deliveryFee);
+      setCouponMsg({ text: 'Free Shipping Applied!', type: 'success' });
+    } else {
+      setDiscount(0);
+      setCouponMsg({ text: 'Invalid coupon code', type: 'error' });
+    }
+  };
+
+  const generatePDF = () => {
+    // 1. Create PDF with cream background
+    const doc = new jsPDF();
+    doc.setFillColor(248, 245, 240); // var(--cream)
+    doc.rect(0, 0, 210, 297, 'F');
+
+    // 2. Load the Logo Image
+    const img = new Image();
+    img.src = logo;
+    img.onload = () => {
+      // Add Logo instead of text
+      doc.addImage(img, 'PNG', 14, 15, 30, 15);
+
+      // Header Details
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(140, 134, 128); // var(--stone)
+      doc.text("Unapologetic style for the modern landscape.", 14, 38);
+
+      // Invoice Details
+      doc.setTextColor(13, 13, 13); // var(--ink)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("INVOICE", 14, 55);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const orderId = `WX-${Math.floor(100000 + Math.random() * 900000)}`;
+      doc.text(`Order ID: ${orderId}`, 14, 62);
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 67);
+
+      // Customer Details
+      doc.setFont("helvetica", "bold");
+      doc.text("Billed To:", 130, 55);
+      doc.setFont("helvetica", "normal");
+      doc.text(form.name, 130, 62);
+      doc.text(form.phone, 130, 67);
+      doc.text(form.address, 130, 72, { maxWidth: 60 });
+
+      // Create Table
+      const tableColumn = ["Item Description", "Size", "Qty", "Price (BDT)"];
+      const tableRows = cartItems.map(item => [
+        item.name,
+        item.selectedSize,
+        item.quantity,
+        item.price
+      ]);
+
+      autoTable(doc, {
+        startY: 85,
+        head: [tableColumn],
+        body: tableRows,
+        theme: 'plain',
+        headStyles: { fillColor: [13, 13, 13], textColor: [255, 255, 255] }, // Black header
+        bodyStyles: { textColor: [13, 13, 13], fillColor: [255, 255, 255] },
+        alternateRowStyles: { fillColor: [248, 245, 240] },
+        styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
+      });
+
+      // Totals
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(11);
+      doc.text(`Subtotal:`, 130, finalY);
+      doc.text(`${subtotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`, 190, finalY, { align: 'right' });
+      
+      doc.text(`Delivery:`, 130, finalY + 7);
+      doc.text(`${deliveryFee.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`, 190, finalY + 7, { align: 'right' });
+      
+      if (discount > 0) {
+        doc.text(`Discount:`, 130, finalY + 14);
+        doc.setTextColor(201, 169, 110); // var(--accent)
+        doc.text(`-${discount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`, 190, finalY + 14, { align: 'right' });
+        doc.setTextColor(13, 13, 13);
+      }
+
+      const totalY = discount > 0 ? finalY + 24 : finalY + 17;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(`Grand Total: BDT ${grandTotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`, 190, totalY, { align: 'right' });
+
+      // Footer
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(140, 134, 128); // var(--stone)
+      doc.text("Thank you for choosing WICXA.", 105, 275, { align: 'center' });
+      doc.text("wicxa.vercel.app  |  +880 1300 017080", 105, 282, { align: 'center' });
+
+      // Download
+      doc.save(`${orderId}_WICXA.pdf`);
+    };
+  };
+
+  const handleBuyNow = () => {
+    // Validate
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = 'Required';
+    if (!form.address.trim()) newErrors.address = 'Required';
+    if (!form.phone.trim()) newErrors.phone = 'Required';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setLoading(true);
+    
+    // Simulate processing
+    setTimeout(() => {
+      generatePDF();
+      setLoading(false);
+      setCart([]); // Clear the cart
+      alert("Order placed successfully! Your invoice is downloading.");
+      navigate('/');
+    }, 1500);
+  };
+
+  const inputStyle = (field: string): React.CSSProperties => ({
+    width: '100%', padding: '14px 16px', fontSize: 14,
+    fontFamily: 'Inter, sans-serif', background: '#fff',
+    border: `1.5px solid ${errors[field] ? '#c0392b' : 'var(--warm-mid)'}`,
+    outline: 'none', color: 'var(--ink)', borderRadius: 2,
+    transition: 'border-color 0.2s',
+    boxSizing: 'border-box' as any,
+  });
+
+  if (cartItems.length === 0) return null;
+
+  return (
+    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 48px', minHeight: '70vh' }}>
+      <Link to="/cart" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--stone)', textDecoration: 'none', marginBottom: 32, fontFamily: 'Inter, sans-serif' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Back to Bag
+      </Link>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 60 }}>
+        {/* Left Form Panel */}
+        <div className="reveal">
+          <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 32, fontWeight: 300, marginBottom: 32 }}>Shipping Details</h2>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 8 }}>Full Name *</label>
+              <input value={form.name} onChange={handleInputChange('name')} style={inputStyle('name')} placeholder="John Doe" />
+              {errors.name && <p style={{ fontSize: 11, color: '#c0392b', marginTop: 4 }}>{errors.name}</p>}
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 8 }}>Phone Number *</label>
+              <input value={form.phone} onChange={handleInputChange('phone')} style={inputStyle('phone')} placeholder="+880 1XXXXXXXXX" />
+              {errors.phone && <p style={{ fontSize: 11, color: '#c0392b', marginTop: 4 }}>{errors.phone}</p>}
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 8 }}>Full Address *</label>
+              <input value={form.address} onChange={handleInputChange('address')} style={inputStyle('address')} placeholder="House, Road, Area, City" />
+              {errors.address && <p style={{ fontSize: 11, color: '#c0392b', marginTop: 4 }}>{errors.address}</p>}
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 8 }}>Email Address (Optional)</label>
+              <input value={form.email} onChange={handleInputChange('email')} style={inputStyle('email')} placeholder="you@example.com" />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <label style={{ display: 'block', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 12 }}>Delivery Zone *</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { id: 'ctg-reg', label: 'Inside Chattogram - Regular (BDT 80)' },
+                  { id: 'ctg-urg', label: 'Inside Chattogram - Urgent (BDT 150)' },
+                  { id: 'outside', label: 'Outside Chattogram (BDT 130)' },
+                ].map((zone) => (
+                  <label key={zone.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: `1.5px solid ${deliveryZone === zone.id ? 'var(--ink)' : 'var(--warm-mid)'}`, background: '#fff', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                    <input 
+                      type="radio" 
+                      name="deliveryZone" 
+                      checked={deliveryZone === zone.id} 
+                      onChange={() => setDeliveryZone(zone.id)}
+                      style={{ accentColor: 'var(--ink)' }}
+                    />
+                    <span style={{ fontSize: 14 }}>{zone.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Summary Panel */}
+        <div className="reveal reveal-delay-1" style={{ alignSelf: 'start' }}>
+          <div style={{ background: '#fff', padding: 36, border: '1px solid var(--warm-mid)' }}>
+            <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 22, fontWeight: 400, marginBottom: 24 }}>Order Summary</h2>
+            
+            {/* Small Item List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--warm-mid)', paddingBottom: 24 }}>
+              {cartItems.map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <span style={{ color: 'var(--stone)' }}>{item.quantity}x</span>
+                    <span>{item.name} ({item.selectedSize})</span>
+                  </div>
+                  <span>BDT {item.price}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Coupon Code */}
+            <div style={{ marginBottom: 24, borderBottom: '1px solid var(--warm-mid)', paddingBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 8 }}>Gift Card or Coupon</label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input 
+                  value={coupon} 
+                  onChange={(e) => { setCoupon(e.target.value); setCouponMsg({text:'', type:''}); }}
+                  placeholder="Enter code" 
+                  style={{ flex: 1, padding: '10px 14px', fontSize: 13, border: '1.5px solid var(--warm-mid)', outline: 'none' }} 
+                />
+                <button onClick={applyCoupon} style={{ padding: '0 20px', background: 'var(--ink)', color: '#fff', border: 'none', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>Apply</button>
+              </div>
+              {couponMsg.text && <p style={{ fontSize: 11, marginTop: 8, color: couponMsg.type === 'success' ? '#27ae60' : '#c0392b' }}>{couponMsg.text}</p>}
+            </div>
+
+            {/* Totals */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13, color: 'var(--stone)', marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Subtotal</span><span>BDT {subtotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Delivery Fee</span><span>BDT {deliveryFee.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
+              </div>
+              {discount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent)' }}>
+                  <span>Discount</span><span>- BDT {discount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 16, borderTop: '1px solid var(--warm-mid)', paddingTop: 20, marginBottom: 32, color: 'var(--ink)' }}>
+              <span>Grand Total</span><span>BDT {grandTotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
+            </div>
+
+            <button 
+              onClick={handleBuyNow}
+              disabled={loading}
+              className="btn-shimmer" 
+              style={{ width: '100%', padding: '16px 0', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.8 : 1 }}
+            >
+              {loading ? 'Processing...' : 'Buy Now'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 // ─── SIGN UP PAGE ─────────────────────────────────────────────────────────────
 
@@ -1401,6 +1659,7 @@ const App = () => {
                 <Route path="/men" element={<CollectionPage gender="Men" addToCart={addToCart} products={products} />} />
                 <Route path="/women" element={<CollectionPage gender="Women" addToCart={addToCart} products={products} />} />
                 <Route path="/cart" element={<CartPage cartItems={cart} />} />
+                <Route path="/checkout" element={<CheckoutPage cartItems={cart} setCart={setCart} />} />
                 <Route path="/product/:id" element={<ProductDetailPage addToCart={addToCart} products={products} />} />
                 <Route path="/signup" element={<SignUpPage />} />
                 <Route path="/about" element={<AboutPage />} />
