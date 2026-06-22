@@ -4,6 +4,48 @@ import logo from './assets/logo.png';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// ─── UTILITY COMPONENTS (SCROLLING) ───────────────────────────────────────────
+
+// Automatically scrolls to top on route change
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
+
+// Floating "Go to Top" Button
+const GoToTopButton = () => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const toggleVisibility = () => setIsVisible(window.scrollY > 400);
+    window.addEventListener('scroll', toggleVisibility);
+    return () => window.removeEventListener('scroll', toggleVisibility);
+  }, []);
+
+  if (!isVisible) return null;
+
+  return (
+    <button 
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      style={{
+        position: 'fixed', bottom: 32, right: 32, zIndex: 90,
+        width: 48, height: 48, borderRadius: '50%',
+        background: 'var(--ink)', color: '#fff', border: 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        transition: 'transform 0.3s ease, background 0.3s ease',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px)')}
+      onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 15l-6-6-6 6"/></svg>
+    </button>
+  );
+};
+
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 
 const GlobalStyles = () => (
@@ -116,16 +158,6 @@ const GlobalStyles = () => (
     .hero-word-3 { animation-delay: 0.6s; }
     .hero-word-4 { animation-delay: 0.85s; }
 
-    /* Parallax hero image */
-    .hero-parallax { transition: transform 0.1s linear; will-change: transform; }
-
-    /* Quick add slide */
-    .quick-add {
-      transform: translateY(100%);
-      transition: transform 0.38s cubic-bezier(0.22,1,0.36,1);
-    }
-    .product-card:hover .quick-add { transform: translateY(0); }
-
     /* Nav glass */
     .nav-glass {
       backdrop-filter: blur(12px);
@@ -134,7 +166,16 @@ const GlobalStyles = () => (
       border-bottom: 1px solid rgba(140,134,128,0.15);
     }
 
-    /* Search overlay */
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .desktop-nav-links { display: none !important; }
+      .mobile-menu-btn { display: flex !important; }
+    }
+    @media (min-width: 769px) {
+      .mobile-menu-btn { display: none !important; }
+    }
+
+    /* Search & Mobile overlay */
     @keyframes overlayIn {
       from { opacity: 0; }
       to   { opacity: 1; }
@@ -149,39 +190,6 @@ const GlobalStyles = () => (
     }
     .grid-item.visible { opacity: 1; transform: translateY(0); }
 
-    /* Cursor dot */
-    #cursor-dot {
-      position: fixed;
-      width: 8px; height: 8px;
-      background: var(--ink);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      transition: transform 0.08s linear, width 0.3s, height 0.3s, background 0.3s;
-    }
-    #cursor-ring {
-      position: fixed;
-      width: 36px; height: 36px;
-      border: 1px solid rgba(13,13,13,0.4);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9998;
-      transform: translate(-50%, -50%);
-      transition: left 0.12s ease, top 0.12s ease, width 0.35s, height 0.35s, border-color 0.35s;
-    }
-    body:has(a:hover) #cursor-ring,
-    body:has(button:hover) #cursor-ring {
-      width: 56px; height: 56px;
-      border-color: var(--accent);
-    }
-
-    /* Announcement bar ticker */
-    .ticker-wrap { overflow: hidden; white-space: nowrap; }
-
-    /* Product image selector */
-    .thumb-active { border: 2px solid var(--ink); }
-
     /* Toast */
     @keyframes toastIn {
       from { opacity: 0; transform: translateY(16px); }
@@ -193,11 +201,6 @@ const GlobalStyles = () => (
     }
     .toast-in  { animation: toastIn 0.4s cubic-bezier(0.22,1,0.36,1) forwards; }
     .toast-out { animation: toastOut 0.4s ease forwards; }
-
-    /* Signup split layout */
-    @media (min-width: 900px) {
-      .signup-left { display: block !important; flex: 1; }
-    }
   `}</style>
 );
 
@@ -232,29 +235,6 @@ function useGridReveal() {
     return () => io.disconnect();
   });
 }
-
-// ─── CURSOR ───────────────────────────────────────────────────────────────────
-
-const CustomCursor = () => {
-  const dotRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (dotRef.current) { dotRef.current.style.left = e.clientX + 'px'; dotRef.current.style.top = e.clientY + 'px'; }
-      if (ringRef.current) { ringRef.current.style.left = e.clientX + 'px'; ringRef.current.style.top = e.clientY + 'px'; }
-    };
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, []);
-
-  return (
-    <>
-      <div id="cursor-dot" ref={dotRef} />
-      <div id="cursor-ring" ref={ringRef} />
-    </>
-  );
-};
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 
@@ -295,10 +275,11 @@ const AnnouncementBar = () => {
   );
 };
 
-// ─── NAVBAR ───────────────────────────────────────────────────────────────────
+// ─── NAVBAR & RESPONSIVE MENU ─────────────────────────────────────────────────
 
 const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () => void }) => {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const prevCount = useRef(cartCount);
   const [badgePop, setBadgePop] = useState(false);
 
@@ -313,44 +294,94 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
     prevCount.current = cartCount;
   }, [cartCount]);
 
+  // We removed 'Home' from this list, as the Logo serves that purpose.
+  const navLinks = [
+    ['/men', 'Men'], 
+    ['/women', 'Women'], 
+    ['/about', 'About']
+  ];
+
   return (
-    <nav className={`nav-glass`} style={{
-      position: 'sticky', top: 0, zIndex: 50,
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: scrolled ? '12px 48px' : '18px 48px',
-      transition: 'padding 0.4s ease',
-    }}>
-      <Link to="/" style={{ textDecoration: 'none' }}>
-        <img src={logo} alt="WICXA Logo" style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }} />
-      </Link>
-
-      <div style={{ display: 'flex', gap: 36, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
-        {[['/', 'Home'], ['/men', 'Men'], ['/women', 'Women'], ['/about', 'About']].map(([to, label]) => (
-          <Link key={to} to={to} className="link-grow" style={{ color: 'var(--ink)', textDecoration: 'none' }}>{label}</Link>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-        <button onClick={openSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)', padding: 4 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <>
+      <nav className="nav-glass" style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: scrolled ? '12px 24px' : '18px 48px',
+        transition: 'padding 0.4s ease',
+      }}>
+        {/* Mobile Hamburger Button */}
+        <button 
+          className="mobile-menu-btn"
+          onClick={() => setMobileMenuOpen(true)}
+          style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--ink)' }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
         </button>
-        <Link to="/signup" style={{ color: 'var(--ink)', padding: 4, display: 'flex' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+          <img src={logo} alt="WICXA Logo" style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }} />
         </Link>
-        <Link to="/cart" style={{ position: 'relative', color: 'var(--ink)', padding: 4 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          {cartCount > 0 && (
-            <span className={badgePop ? 'badge-pop' : ''} style={{
-              position: 'absolute', top: -2, right: -6,
-              background: 'var(--accent)', color: '#fff',
-              fontSize: 9, fontWeight: 700,
-              width: 16, height: 16,
-              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>{cartCount}</span>
-          )}
-        </Link>
-      </div>
-    </nav>
+
+        {/* Desktop Links (Hidden on mobile) */}
+        <div className="desktop-nav-links" style={{ display: 'flex', gap: 36, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+          {navLinks.map(([to, label]) => (
+            <Link key={to} to={to} className="link-grow" style={{ color: 'var(--ink)', textDecoration: 'none' }}>{label}</Link>
+          ))}
+        </div>
+
+        {/* Action Icons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth > 768 ? 22 : 12 }}>
+          <button onClick={openSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)', padding: 4 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+          <Link className="desktop-nav-links" to="/signup" style={{ color: 'var(--ink)', padding: 4, display: 'flex' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </Link>
+          <Link to="/cart" style={{ position: 'relative', color: 'var(--ink)', padding: 4 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            {cartCount > 0 && (
+              <span className={badgePop ? 'badge-pop' : ''} style={{
+                position: 'absolute', top: -2, right: -6,
+                background: 'var(--accent)', color: '#fff',
+                fontSize: 9, fontWeight: 700,
+                width: 16, height: 16,
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>{cartCount}</span>
+            )}
+          </Link>
+        </div>
+      </nav>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="overlay-in" style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'var(--cream)', display: 'flex', flexDirection: 'column',
+          padding: '24px 32px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 60 }}>
+            <img src={logo} alt="WICXA Logo" style={{ height: 40 }} />
+            <button onClick={() => setMobileMenuOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+            {navLinks.map(([to, label]) => (
+              <Link 
+                key={to} to={to} 
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 40, color: 'var(--ink)', textDecoration: 'none' }}
+              >
+                {label}
+              </Link>
+            ))}
+            <div style={{ height: 1, background: 'var(--warm-mid)', margin: '16px 0' }} />
+            <Link to="/signup" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', textDecoration: 'none', fontFamily: 'Inter, sans-serif' }}>Member Access</Link>
+            <Link to="/contact" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', textDecoration: 'none', fontFamily: 'Inter, sans-serif' }}>Contact Us</Link>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -420,7 +451,7 @@ const SearchOverlay = ({ isOpen, onClose, products }: { isOpen: boolean; onClose
             <p style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 20, fontFamily: 'Inter, sans-serif' }}>
               {results.length} result{results.length !== 1 ? 's' : ''}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '20px 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '20px 16px' }}>
               {results.map((p) => (
                 <div key={p._id || p.id} onClick={() => { onClose(); navigate(`/product/${p._id || p.id}`); }} style={{ cursor: 'pointer' }}>
                   <div style={{ overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)', marginBottom: 10 }}>
@@ -435,18 +466,18 @@ const SearchOverlay = ({ isOpen, onClose, products }: { isOpen: boolean; onClose
         )}
 
         {!query && (
-          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 64 }}>
-            <div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 64 }}>
+            <div style={{ minWidth: 200 }}>
               <p style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 18, fontFamily: 'Inter, sans-serif' }}>Quick Links</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {([["Men's Collection", '/men'], ["Women's Collection", '/women'], ['New Arrivals', '/men'], ['Bestsellers', '/men']] as [string,string][]).map(([label, to]) => (
+                {([["Men's Collection", '/men'], ["Women's Collection", '/women'], ['New Arrivals', '/men']] as [string,string][]).map(([label, to]) => (
                   <Link key={label} to={to} onClick={onClose} className="link-grow" style={{ fontSize: 14, color: 'var(--ink)', textDecoration: 'none', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>{label}</Link>
                 ))}
               </div>
             </div>
-            <div>
+            <div style={{ flex: 1 }}>
               <p style={{ fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 18, fontFamily: 'Inter, sans-serif' }}>Suggested</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px 14px' }}>
                 {suggested.map((p) => (
                   <div key={p._id || p.id} onClick={() => { onClose(); navigate(`/product/${p._id || p.id}`); }} style={{ cursor: 'pointer' }}>
                     <div style={{ overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)', marginBottom: 10 }}>
@@ -470,7 +501,6 @@ const SearchOverlay = ({ isOpen, onClose, products }: { isOpen: boolean; onClose
 const Footer = () => (
   <footer style={{ borderTop: '1px solid var(--warm-mid)', padding: '80px 48px 40px', background: 'var(--cream)', color: 'var(--ink)' }}>
     <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '40px 60px', marginBottom: 60 }}>
-      {/* Brand Column */}
       <div style={{ paddingRight: 40 }}>
         <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 32, fontWeight: 300, letterSpacing: '0.28em', display: 'block', marginBottom: 20 }}>WICXA</span>
         <p style={{ fontSize: 13, color: 'var(--stone)', lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}>
@@ -478,7 +508,6 @@ const Footer = () => (
         </p>
       </div>
       
-      {/* Support Links */}
       <div>
         <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 24, color: 'var(--ink)' }}>Support</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -487,7 +516,6 @@ const Footer = () => (
         </div>
       </div>
 
-      {/* Legal Links */}
       <div>
         <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 24, color: 'var(--ink)' }}>Legal</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -496,7 +524,6 @@ const Footer = () => (
         </div>
       </div>
 
-      {/* Social Links */}
       <div>
         <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 24, color: 'var(--ink)' }}>Social</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -563,7 +590,7 @@ const ProductGrid = ({ title, products, addToCart }: any) => {
         <h2 className="reveal" style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 36, fontWeight: 300, letterSpacing: '0.12em' }}>{title}</h2>
         <span className="reveal reveal-delay-1" style={{ fontSize: 11, color: 'var(--stone)', letterSpacing: '0.16em', textTransform: 'uppercase' }}>{products.length} pieces</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px 20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '24px 20px' }}>
         {products.map((p: any, i: number) => <ProductCard key={p._id || p.id} product={p} addToCart={addToCart} index={i} />)}
       </div>
     </section>
@@ -591,7 +618,7 @@ const HomePage = ({ addToCart, products }: any) => {
   return (
     <div className="page-enter">
       {/* Hero */}
-      <header ref={heroRef} style={{ position: 'relative', height: '92vh', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', paddingBottom: 80, paddingLeft: 64 }}>
+      <header ref={heroRef} style={{ position: 'relative', height: '92vh', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', paddingBottom: 80, paddingLeft: '5%' }}>
         <img
           ref={imgRef}
           src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=2565&auto=format&fit=crop"
@@ -603,12 +630,12 @@ const HomePage = ({ addToCart, products }: any) => {
           <p style={{ fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginBottom: 18, fontFamily: 'Inter, sans-serif' }}>
             New Drop — SS26
           </p>
-          <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 300, fontSize: 64, lineHeight: 1.06, letterSpacing: '0.04em' }}>
+          <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 300, fontSize: 'clamp(40px, 6vw, 64px)', lineHeight: 1.06, letterSpacing: '0.04em' }}>
             <span className="hero-word hero-word-1" style={{ display: 'block' }}>Unapologetic</span>
             <span className="hero-word hero-word-2" style={{ display: 'block' }}>style for the</span>
             <span className="hero-word hero-word-3" style={{ display: 'block', fontStyle: 'italic' }}>modern landscape.</span>
           </h1>
-          <div style={{ display: 'flex', gap: 16, marginTop: 40 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 40 }}>
             <Link to="/men" className="btn-shimmer" style={{ padding: '14px 36px', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>
               Shop Men
             </Link>
@@ -621,15 +648,8 @@ const HomePage = ({ addToCart, products }: any) => {
             </Link>
           </div>
         </div>
-
-        {/* scroll indicator */}
-        <div style={{ position: 'absolute', bottom: 32, right: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.5)' }}>
-          <span style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', writingMode: 'vertical-rl', fontFamily: 'Inter, sans-serif' }}>Scroll</span>
-          <div style={{ width: 1, height: 48, background: 'rgba(255,255,255,0.3)' }} />
-        </div>
       </header>
 
-      {/* Marquee divider */}
       <div style={{ background: 'var(--accent)', padding: '13px 0', overflow: 'hidden' }}>
         <div className="marquee-track" style={{ display: 'inline-flex', gap: 64, whiteSpace: 'nowrap' }}>
           {Array.from({ length: 8 }).map((_, i) => (
@@ -641,36 +661,23 @@ const HomePage = ({ addToCart, products }: any) => {
       </div>
 
       {/* Categories */}
-      <section style={{ padding: '100px 48px' }}>
+      <section style={{ padding: '100px 5%' }}>
         <div className="reveal" style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 56 }}>
           <div style={{ height: 1, background: 'var(--warm-mid)', flex: 1 }} />
           <span style={{ fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'var(--stone)', whiteSpace: 'nowrap' }}>Explore Categories</span>
           <div style={{ height: 1, background: 'var(--warm-mid)', flex: 1 }} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
           {[
             { to: '/men', label: 'Men', img: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?q=80&w=800&auto=format&fit=crop' },
             { to: '/women', label: 'Women', img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=800&auto=format&fit=crop' },
             { to: '/men', label: 'Jerseys', img: 'https://images.unsplash.com/photo-1562157873-818bc0726f68?q=80&w=800&auto=format&fit=crop' },
             { to: '/men', label: 'Heritage', img: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop' },
           ].map(({ to, label, img }, i) => (
-            <Link
-              key={label}
-              to={to}
-              className={`grid-item reveal-delay-${i + 1}`}
-              style={{
-                display: 'block', position: 'relative',
-                aspectRatio: '3/4', overflow: 'hidden',
-                background: 'var(--warm-mid)', textDecoration: 'none',
-              }}
-            >
+            <Link key={label} to={to} className={`grid-item reveal-delay-${i + 1}`} style={{ display: 'block', position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: 'var(--warm-mid)', textDecoration: 'none' }}>
               <img src={img} alt={label} className="img-zoom" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(13,13,13,0.55) 0%, transparent 50%)' }} />
-              <span style={{
-                position: 'absolute', bottom: 24, left: 24,
-                color: '#fff', fontFamily: 'Cormorant Garamond, serif',
-                fontSize: 28, fontWeight: 400, letterSpacing: '0.12em',
-              }}>{label}</span>
+              <span style={{ position: 'absolute', bottom: 24, left: 24, color: '#fff', fontFamily: 'Cormorant Garamond, serif', fontSize: 28, fontWeight: 400, letterSpacing: '0.12em' }}>{label}</span>
             </Link>
           ))}
         </div>
@@ -683,7 +690,7 @@ const HomePage = ({ addToCart, products }: any) => {
 
       {/* Brand statement */}
       <section className="reveal" style={{ padding: '100px 48px', textAlign: 'center', borderTop: '1px solid var(--warm-mid)' }}>
-        <p style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 48, fontWeight: 300, letterSpacing: '0.06em', lineHeight: 1.3, maxWidth: 800, margin: '0 auto', fontStyle: 'italic', color: 'var(--ink)' }}>
+        <p style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 300, letterSpacing: '0.06em', lineHeight: 1.3, maxWidth: 800, margin: '0 auto', fontStyle: 'italic', color: 'var(--ink)' }}>
           "Garments built for those who move through the world on their own terms."
         </p>
         <div style={{ width: 40, height: 1, background: 'var(--accent)', margin: '40px auto 0' }} />
@@ -703,13 +710,13 @@ const CollectionPage = ({ gender, addToCart, products }: { gender: 'Men' | 'Wome
 
   return (
     <div className="page-enter">
-      <header style={{ position: 'relative', height: '40vh', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', paddingBottom: 48, paddingLeft: 64 }}>
+      <header style={{ position: 'relative', height: '40vh', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', paddingBottom: 48, paddingLeft: '5%' }}>
         <img src={img} alt={gender} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(13,13,13,0.52)' }} />
         <h1 className="hero-word hero-word-1" style={{
           position: 'relative', zIndex: 2,
           fontFamily: 'Cormorant Garamond, serif', fontWeight: 300,
-          fontSize: 56, color: '#fff', letterSpacing: '0.1em',
+          fontSize: 'clamp(40px, 5vw, 56px)', color: '#fff', letterSpacing: '0.1em',
         }}>{gender}'s Collection</h1>
       </header>
       <ProductGrid title="Drop Tees" products={categoryProducts} addToCart={addToCart} />
@@ -734,8 +741,8 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
   if (!product) return <div style={{ padding: '120px 48px', textAlign: 'center', minHeight: '60vh' }}>Loading...</div>;
 
   return (
-    <div className="page-enter" style={{ maxWidth: 1400, margin: '0 auto', padding: '60px 48px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 60 }}>
+    <div className="page-enter" style={{ maxWidth: 1400, margin: '0 auto', padding: '60px 5%' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 60 }}>
         {/* Images */}
         <div>
           <div style={{ overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)', marginBottom: 12 }}>
@@ -760,7 +767,6 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
           <h1 className="reveal reveal-delay-1" style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 38, fontWeight: 300, lineHeight: 1.15, marginBottom: 16 }}>{product.name}</h1>
           <p className="reveal reveal-delay-2" style={{ fontSize: 22, fontFamily: 'Cormorant Garamond, serif', marginBottom: 36 }}>BDT {product.price}</p>
 
-          {/* Size */}
           <div className="reveal reveal-delay-3" style={{ marginBottom: 28 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--stone)' }}>Size — {selectedSize}</span>
@@ -779,7 +785,6 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
             </div>
           </div>
 
-          {/* Qty + Add */}
           <div className="reveal reveal-delay-4" style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--warm-mid)', padding: '0 18px', gap: 18, background: '#fff' }}>
               <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--stone)' }}>−</button>
@@ -796,7 +801,7 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
           </div>
 
           <button
-            onClick={() => { addToCart(product, selectedSize, qty); navigate('/cart'); }}
+            onClick={() => { addToCart(product, selectedSize, qty); navigate('/checkout'); }}
             style={{ width: '100%', padding: '14px 0', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, background: 'transparent', border: '1.5px solid var(--ink)', cursor: 'pointer', transition: 'background 0.25s, color 0.25s', fontFamily: 'Inter, sans-serif', color: 'var(--ink)' }}
             onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.background = 'var(--ink)'; (e.target as HTMLButtonElement).style.color = '#fff'; }}
             onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.background = 'transparent'; (e.target as HTMLButtonElement).style.color = 'var(--ink)'; }}
@@ -849,7 +854,7 @@ const CartPage = ({ cartItems }: { cartItems: any[] }) => {
   const total = cartItems.reduce((s, i) => s + parseFloat(i.price.replace(/,/g, '')), 0);
 
   return (
-    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 48px', minHeight: '60vh' }}>
+    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 5%', minHeight: '60vh' }}>
       <h1 className="reveal" style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 48, fontWeight: 300, letterSpacing: '0.1em', marginBottom: 48, borderBottom: '1px solid var(--warm-mid)', paddingBottom: 24 }}>
         Your Bag
       </h1>
@@ -861,7 +866,7 @@ const CartPage = ({ cartItems }: { cartItems: any[] }) => {
           </Link>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 60 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 60 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
             {cartItems.map((item, i) => (
               <div key={i} className="reveal" style={{ display: 'flex', gap: 24, paddingBottom: 28, borderBottom: '1px solid var(--warm-mid)' }}>
@@ -902,31 +907,20 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
   useReveal();
   const navigate = useNavigate();
 
-  // Redirect if cart is empty
   useEffect(() => {
     if (cartItems.length === 0) navigate('/cart');
   }, [cartItems, navigate]);
 
-  // Form State
   const [form, setForm] = useState({ name: '', address: '', phone: '', email: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  // Delivery State
   const [deliveryZone, setDeliveryZone] = useState('ctg-reg');
-  
-  // Coupon State
   const [coupon, setCoupon] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponMsg, setCouponMsg] = useState({ text: '', type: '' });
   const [loading, setLoading] = useState(false);
 
-  // Math
   const subtotal = cartItems.reduce((s, i) => s + parseFloat(i.price.replace(/,/g, '')), 0);
-  
-  const deliveryFee = 
-    deliveryZone === 'ctg-reg' ? 80 :
-    deliveryZone === 'ctg-urg' ? 150 : 130;
-
+  const deliveryFee = deliveryZone === 'ctg-reg' ? 80 : deliveryZone === 'ctg-urg' ? 150 : 130;
   const grandTotal = (subtotal + deliveryFee) - discount;
 
   const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -938,7 +932,7 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
     if (!coupon.trim()) return;
     const code = coupon.toUpperCase();
     if (code === 'WICXA10') {
-      setDiscount(subtotal * 0.10); // 10% off
+      setDiscount(subtotal * 0.10); 
       setCouponMsg({ text: '10% Discount Applied!', type: 'success' });
     } else if (code === 'FREESHIP') {
       setDiscount(deliveryFee);
@@ -949,38 +943,31 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
     }
   };
 
-  const generatePDF = () => {
-    // 1. Create PDF with cream background
+  const generatePDF = (orderId: string) => {
     const doc = new jsPDF();
-    doc.setFillColor(248, 245, 240); // var(--cream)
+    doc.setFillColor(248, 245, 240); 
     doc.rect(0, 0, 210, 297, 'F');
 
-    // 2. Load the Logo Image
     const img = new Image();
     img.src = logo;
     img.onload = () => {
-      // Add Logo instead of text
       doc.addImage(img, 'PNG', 14, 15, 30, 15);
 
-      // Header Details
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.setTextColor(140, 134, 128); // var(--stone)
+      doc.setTextColor(140, 134, 128); 
       doc.text("Unapologetic style for the modern landscape.", 14, 38);
 
-      // Invoice Details
-      doc.setTextColor(13, 13, 13); // var(--ink)
+      doc.setTextColor(13, 13, 13); 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.text("INVOICE", 14, 55);
       
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      const orderId = `WX-${Math.floor(100000 + Math.random() * 900000)}`;
       doc.text(`Order ID: ${orderId}`, 14, 62);
       doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 67);
 
-      // Customer Details
       doc.setFont("helvetica", "bold");
       doc.text("Billed To:", 130, 55);
       doc.setFont("helvetica", "normal");
@@ -988,7 +975,6 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
       doc.text(form.phone, 130, 67);
       doc.text(form.address, 130, 72, { maxWidth: 60 });
 
-      // Create Table
       const tableColumn = ["Item Description", "Size", "Qty", "Price (BDT)"];
       const tableRows = cartItems.map(item => [
         item.name,
@@ -1002,13 +988,12 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
         head: [tableColumn],
         body: tableRows,
         theme: 'plain',
-        headStyles: { fillColor: [13, 13, 13], textColor: [255, 255, 255] }, // Black header
+        headStyles: { fillColor: [13, 13, 13], textColor: [255, 255, 255] }, 
         bodyStyles: { textColor: [13, 13, 13], fillColor: [255, 255, 255] },
         alternateRowStyles: { fillColor: [248, 245, 240] },
         styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
       });
 
-      // Totals
       const finalY = (doc as any).lastAutoTable.finalY + 10;
       doc.setFontSize(11);
       doc.text(`Subtotal:`, 130, finalY);
@@ -1019,7 +1004,7 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
       
       if (discount > 0) {
         doc.text(`Discount:`, 130, finalY + 14);
-        doc.setTextColor(201, 169, 110); // var(--accent)
+        doc.setTextColor(201, 169, 110); 
         doc.text(`-${discount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`, 190, finalY + 14, { align: 'right' });
         doc.setTextColor(13, 13, 13);
       }
@@ -1029,20 +1014,17 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
       doc.setFontSize(14);
       doc.text(`Grand Total: BDT ${grandTotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`, 190, totalY, { align: 'right' });
 
-      // Footer
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      doc.setTextColor(140, 134, 128); // var(--stone)
+      doc.setTextColor(140, 134, 128); 
       doc.text("Thank you for choosing WICXA.", 105, 275, { align: 'center' });
       doc.text("wicxa.vercel.app  |  +880 1300 017080", 105, 282, { align: 'center' });
 
-      // Download
       doc.save(`${orderId}_WICXA.pdf`);
     };
   };
 
-  const handleBuyNow = () => {
-    // Validate
+  const handleBuyNow = async () => {
     const newErrors: Record<string, string> = {};
     if (!form.name.trim()) newErrors.name = 'Required';
     if (!form.address.trim()) newErrors.address = 'Required';
@@ -1054,15 +1036,36 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
     }
 
     setLoading(true);
-    
-    // Simulate processing
-    setTimeout(() => {
-      generatePDF();
-      setLoading(false);
-      setCart([]); // Clear the cart
+
+    const generatedOrderId = `WX-${Math.floor(100000 + Math.random() * 900000)}`;
+    const orderData = {
+      orderId: generatedOrderId,
+      customer: { name: form.name, phone: form.phone, address: form.address, email: form.email },
+      deliveryZone: deliveryZone,
+      items: cartItems,
+      totals: { subtotal, deliveryFee, discount, grandTotal }
+    };
+
+    try {
+      const response = await fetch('https://wicxa.onrender.com/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) throw new Error('Failed to save order');
+
+      generatePDF(generatedOrderId);
+      setCart([]); 
       alert("Order placed successfully! Your invoice is downloading.");
       navigate('/');
-    }, 1500);
+
+    } catch (error) {
+      console.error("Order submission failed:", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputStyle = (field: string): React.CSSProperties => ({
@@ -1077,13 +1080,13 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
   if (cartItems.length === 0) return null;
 
   return (
-    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 48px', minHeight: '70vh' }}>
+    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 5%', minHeight: '70vh' }}>
       <Link to="/cart" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--stone)', textDecoration: 'none', marginBottom: 32, fontFamily: 'Inter, sans-serif' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         Back to Bag
       </Link>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 60 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 60 }}>
         {/* Left Form Panel */}
         <div className="reveal">
           <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 32, fontWeight: 300, marginBottom: 32 }}>Shipping Details</h2>
@@ -1121,13 +1124,7 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
                   { id: 'outside', label: 'Outside Chattogram (BDT 130)' },
                 ].map((zone) => (
                   <label key={zone.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: `1.5px solid ${deliveryZone === zone.id ? 'var(--ink)' : 'var(--warm-mid)'}`, background: '#fff', cursor: 'pointer', transition: 'border-color 0.2s' }}>
-                    <input 
-                      type="radio" 
-                      name="deliveryZone" 
-                      checked={deliveryZone === zone.id} 
-                      onChange={() => setDeliveryZone(zone.id)}
-                      style={{ accentColor: 'var(--ink)' }}
-                    />
+                    <input type="radio" name="deliveryZone" checked={deliveryZone === zone.id} onChange={() => setDeliveryZone(zone.id)} style={{ accentColor: 'var(--ink)' }} />
                     <span style={{ fontSize: 14 }}>{zone.label}</span>
                   </label>
                 ))}
@@ -1141,7 +1138,6 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
           <div style={{ background: '#fff', padding: 36, border: '1px solid var(--warm-mid)' }}>
             <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 22, fontWeight: 400, marginBottom: 24 }}>Order Summary</h2>
             
-            {/* Small Item List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--warm-mid)', paddingBottom: 24 }}>
               {cartItems.map((item, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
@@ -1154,22 +1150,15 @@ const CheckoutPage = ({ cartItems, setCart }: { cartItems: any[], setCart: any }
               ))}
             </div>
 
-            {/* Coupon Code */}
             <div style={{ marginBottom: 24, borderBottom: '1px solid var(--warm-mid)', paddingBottom: 24 }}>
               <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', marginBottom: 8 }}>Gift Card or Coupon</label>
               <div style={{ display: 'flex', gap: 10 }}>
-                <input 
-                  value={coupon} 
-                  onChange={(e) => { setCoupon(e.target.value); setCouponMsg({text:'', type:''}); }}
-                  placeholder="Enter code" 
-                  style={{ flex: 1, padding: '10px 14px', fontSize: 13, border: '1.5px solid var(--warm-mid)', outline: 'none' }} 
-                />
+                <input value={coupon} onChange={(e) => { setCoupon(e.target.value); setCouponMsg({text:'', type:''}); }} placeholder="Enter code" style={{ flex: 1, padding: '10px 14px', fontSize: 13, border: '1.5px solid var(--warm-mid)', outline: 'none' }} />
                 <button onClick={applyCoupon} style={{ padding: '0 20px', background: 'var(--ink)', color: '#fff', border: 'none', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>Apply</button>
               </div>
               {couponMsg.text && <p style={{ fontSize: 11, marginTop: 8, color: couponMsg.type === 'success' ? '#27ae60' : '#c0392b' }}>{couponMsg.text}</p>}
             </div>
 
-            {/* Totals */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13, color: 'var(--stone)', marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Subtotal</span><span>BDT {subtotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
@@ -1375,7 +1364,7 @@ const AboutPage = () => {
       <header style={{
         position: 'relative', height: '52vh', overflow: 'hidden',
         display: 'flex', alignItems: 'flex-end',
-        paddingBottom: 64, paddingLeft: 64,
+        paddingBottom: 64, paddingLeft: '5%',
       }}>
         <img
           src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=2565&auto=format&fit=crop"
@@ -1389,7 +1378,7 @@ const AboutPage = () => {
           </p>
           <h1 className="hero-word hero-word-1" style={{
             fontFamily: 'Cormorant Garamond, serif', fontWeight: 300,
-            fontSize: 60, letterSpacing: '0.06em', lineHeight: 1.1,
+            fontSize: 'clamp(40px, 6vw, 60px)', letterSpacing: '0.06em', lineHeight: 1.1,
           }}>
             Where Passion<br /><em>Meets Purpose</em>
           </h1>
@@ -1397,7 +1386,7 @@ const AboutPage = () => {
       </header>
 
       {/* Mission */}
-      <section style={{ padding: '100px 48px', maxWidth: 900, margin: '0 auto' }}>
+      <section style={{ padding: '100px 5%', maxWidth: 900, margin: '0 auto' }}>
         <p className="reveal" style={{
           fontSize: 11, letterSpacing: '0.26em', textTransform: 'uppercase',
           color: 'var(--stone)', marginBottom: 28, fontFamily: 'Inter, sans-serif',
@@ -1405,7 +1394,7 @@ const AboutPage = () => {
           What We Stand For
         </p>
         <p className="reveal reveal-delay-1" style={{
-          fontFamily: 'Cormorant Garamond, serif', fontSize: 30,
+          fontFamily: 'Cormorant Garamond, serif', fontSize: 'clamp(24px, 4vw, 30px)',
           fontWeight: 300, lineHeight: 1.65, color: 'var(--ink)',
           marginBottom: 36,
         }}>
@@ -1425,7 +1414,7 @@ const AboutPage = () => {
           paddingLeft: 32,
         }}>
           <p style={{
-            fontFamily: 'Cormorant Garamond, serif', fontSize: 26,
+            fontFamily: 'Cormorant Garamond, serif', fontSize: 'clamp(20px, 3vw, 26px)',
             fontStyle: 'italic', fontWeight: 400, lineHeight: 1.5, color: 'var(--ink)',
           }}>
             "We don't just sell dresses — we provide quality and premium-ness."
@@ -1437,7 +1426,7 @@ const AboutPage = () => {
       </section>
 
       {/* Pillars */}
-      <section style={{ background: 'var(--ink)', padding: '80px 48px', marginBottom: 40 }}>
+      <section style={{ background: 'var(--ink)', padding: '80px 5%', marginBottom: 40 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <p className="reveal" style={{
             fontSize: 10, letterSpacing: '0.28em', textTransform: 'uppercase',
@@ -1446,7 +1435,7 @@ const AboutPage = () => {
           }}>
             What Drives Us
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 40 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 40 }}>
             {[
               {
                 label: 'Design First',
@@ -1487,7 +1476,7 @@ const AboutPage = () => {
 const ContactPage = () => {
   useReveal();
   return (
-    <div className="page-enter" style={{ minHeight: '70vh', padding: '120px 48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="page-enter" style={{ minHeight: '70vh', padding: '120px 5%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center', width: '100%' }}>
         <p className="reveal" style={{
           fontSize: 10, letterSpacing: '0.28em', textTransform: 'uppercase',
@@ -1496,7 +1485,7 @@ const ContactPage = () => {
           Get In Touch
         </p>
         <h2 className="reveal reveal-delay-1" style={{
-          fontFamily: 'Cormorant Garamond, serif', fontSize: 44,
+          fontFamily: 'Cormorant Garamond, serif', fontSize: 'clamp(32px, 5vw, 44px)',
           fontWeight: 300, letterSpacing: '0.06em', marginBottom: 48,
         }}>
           We'd love to hear from you.
@@ -1559,8 +1548,8 @@ const ContactPage = () => {
 const SimpleTextPage = ({ title, children }: { title: string, children: React.ReactNode }) => {
   useReveal();
   return (
-    <div className="page-enter" style={{ padding: '120px 48px', maxWidth: 800, margin: '0 auto', minHeight: '70vh' }}>
-      <h1 className="reveal" style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 44, fontWeight: 300, letterSpacing: '0.04em', marginBottom: 48, textAlign: 'center' }}>{title}</h1>
+    <div className="page-enter" style={{ padding: '120px 5%', maxWidth: 800, margin: '0 auto', minHeight: '70vh' }}>
+      <h1 className="reveal" style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 'clamp(32px, 5vw, 44px)', fontWeight: 300, letterSpacing: '0.04em', marginBottom: 48, textAlign: 'center' }}>{title}</h1>
       <div className="reveal reveal-delay-1" style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--stone)', fontFamily: 'Inter, sans-serif' }}>
         {children}
       </div>
@@ -1640,13 +1629,18 @@ const App = () => {
 
   return (
     <Router>
+      {/* 1. SCROLL TO TOP ON ROUTE CHANGE */}
+      <ScrollToTop />
+      
       <GlobalStyles />
       <CustomCursor />
+      
       <div style={{ minHeight: '100vh', background: 'var(--cream)', color: 'var(--ink)', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif', overflowX: 'hidden' }}>
         <AnnouncementBar />
         <Navbar cartCount={cart.length} openSearch={() => setSearchOpen(true)} />
         <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} products={products} />
         {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+        
         <main style={{ flex: 1 }}>
           {loading ? (
             <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1671,7 +1665,11 @@ const App = () => {
             </PageWrapper>
           )}
         </main>
+        
         <Footer />
+        
+        {/* 2. FLOATING "GO TO TOP" BUTTON */}
+        <GoToTopButton />
       </div>
     </Router>
   );
