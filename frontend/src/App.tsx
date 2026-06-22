@@ -158,6 +158,16 @@ const GlobalStyles = () => (
     .hero-word-3 { animation-delay: 0.6s; }
     .hero-word-4 { animation-delay: 0.85s; }
 
+    /* Parallax hero image */
+    .hero-parallax { transition: transform 0.1s linear; will-change: transform; }
+
+    /* Quick add slide */
+    .quick-add {
+      transform: translateY(100%);
+      transition: transform 0.38s cubic-bezier(0.22,1,0.36,1);
+    }
+    .product-card:hover .quick-add { transform: translateY(0); }
+
     /* Nav glass */
     .nav-glass {
       backdrop-filter: blur(12px);
@@ -190,6 +200,33 @@ const GlobalStyles = () => (
     }
     .grid-item.visible { opacity: 1; transform: translateY(0); }
 
+    /* Cursor dot */
+    #cursor-dot {
+      position: fixed;
+      width: 8px; height: 8px;
+      background: var(--ink);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.08s linear, width 0.3s, height 0.3s, background 0.3s;
+    }
+    #cursor-ring {
+      position: fixed;
+      width: 36px; height: 36px;
+      border: 1px solid rgba(13,13,13,0.4);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: left 0.12s ease, top 0.12s ease, width 0.35s, height 0.35s, border-color 0.35s;
+    }
+    body:has(a:hover) #cursor-ring,
+    body:has(button:hover) #cursor-ring {
+      width: 56px; height: 56px;
+      border-color: var(--accent);
+    }
+
     /* Toast */
     @keyframes toastIn {
       from { opacity: 0; transform: translateY(16px); }
@@ -201,6 +238,11 @@ const GlobalStyles = () => (
     }
     .toast-in  { animation: toastIn 0.4s cubic-bezier(0.22,1,0.36,1) forwards; }
     .toast-out { animation: toastOut 0.4s ease forwards; }
+
+    /* Signup split layout */
+    @media (min-width: 900px) {
+      .signup-left { display: block !important; flex: 1; }
+    }
   `}</style>
 );
 
@@ -235,6 +277,29 @@ function useGridReveal() {
     return () => io.disconnect();
   });
 }
+
+// ─── CURSOR ───────────────────────────────────────────────────────────────────
+
+const CustomCursor = () => {
+  const dotRef = useRef<HTMLDivElement>(null);
+  const ringRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (dotRef.current) { dotRef.current.style.left = e.clientX + 'px'; dotRef.current.style.top = e.clientY + 'px'; }
+      if (ringRef.current) { ringRef.current.style.left = e.clientX + 'px'; ringRef.current.style.top = e.clientY + 'px'; }
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
+
+  return (
+    <>
+      <div id="cursor-dot" ref={dotRef} />
+      <div id="cursor-ring" ref={ringRef} />
+    </>
+  );
+};
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 
