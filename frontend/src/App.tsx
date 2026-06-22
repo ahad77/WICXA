@@ -227,6 +227,9 @@ const GlobalStyles = () => (
       border-color: var(--accent);
     }
 
+    /* Announcement bar ticker */
+    .ticker-wrap { overflow: hidden; white-space: nowrap; display: flex; }
+
     /* Toast */
     @keyframes toastIn {
       from { opacity: 0; transform: translateY(16px); }
@@ -330,9 +333,9 @@ const Toast = ({ message, onDone }: { message: string; onDone: () => void }) => 
 const AnnouncementBar = () => {
   const text = '✦  Unapologetic style for the modern landscape  ✦  Free shipping on orders over BDT 3,000  ✦  New drops every Friday  ';
   return (
-    <div style={{ background: 'var(--ink)', color: '#fff', padding: '10px 0', overflow: 'hidden' }}>
-      <div className="ticker-wrap">
-        <span className="marquee-track" style={{ display: 'inline-block', fontSize: 11, letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
+    <div style={{ background: 'var(--ink)', color: '#fff', padding: '10px 0', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+      <div className="ticker-wrap" style={{ display: 'flex', whiteSpace: 'nowrap' }}>
+        <span className="marquee-track" style={{ display: 'inline-flex', whiteSpace: 'nowrap', fontSize: 11, letterSpacing: '0.18em', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
           {text}{text}{text}{text}
         </span>
       </div>
