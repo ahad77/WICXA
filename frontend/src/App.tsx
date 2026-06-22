@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import logo from './assets/logo.png'; 
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 
@@ -844,6 +846,58 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
 const CartPage = ({ cartItems }: { cartItems: any[] }) => {
   useReveal();
   const total = cartItems.reduce((s, i) => s + parseFloat(i.price.replace(/,/g, '')), 0);
+
+  // --- NEW INVOICE GENERATION FUNCTION ---
+  const handleCheckout = () => {
+    const doc = new jsPDF();
+
+    // 1. Add WICXA Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(28);
+    doc.text("WICXA", 14, 22);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(140, 134, 128); // Stone color
+    doc.text("Unapologetic style for the modern landscape.", 14, 30);
+
+    // 2. Add Invoice Details
+    doc.setTextColor(13, 13, 13); // Ink color
+    doc.setFontSize(12);
+    doc.text("INVOICE", 14, 45);
+    doc.setFontSize(10);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 52);
+    doc.text(`Order ID: WX-${Math.floor(100000 + Math.random() * 900000)}`, 14, 58);
+
+    // 3. Create the Table Data
+    const tableColumn = ["Item Description", "Size", "Qty", "Price (BDT)"];
+    const tableRows = cartItems.map(item => [
+      item.name,
+      item.selectedSize,
+      item.quantity,
+      item.price
+    ]);
+
+    // 4. Draw the Table
+    autoTable(doc, {
+      startY: 65,
+      head: [tableColumn],
+      body: tableRows,
+      theme: 'striped',
+      headStyles: { fillColor: [13, 13, 13], textColor: [255, 255, 255] }, // Black header
+      styles: { font: 'helvetica', fontSize: 10 },
+    });
+
+    // 5. Add Total at the bottom
+    const finalY = (doc as any).lastAutoTable.finalY || 65;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`Total: BDT ${total.toLocaleString('en-BD', { minimumFractionDigits: 2 })}`, 14, finalY + 15);
+
+    // 6. Download the PDF!
+    doc.save("WICXA_Invoice.pdf");
+  };
+
   return (
     <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 48px', minHeight: '60vh' }}>
       <h1 className="reveal" style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 48, fontWeight: 300, letterSpacing: '0.1em', marginBottom: 48, borderBottom: '1px solid var(--warm-mid)', paddingBottom: 24 }}>
@@ -878,7 +932,11 @@ const CartPage = ({ cartItems }: { cartItems: any[] }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15, borderTop: '1px solid var(--warm-mid)', paddingTop: 20, marginTop: 8, marginBottom: 28 }}>
               <span>Total</span><span>BDT {total.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
             </div>
-            <button className="btn-shimmer" style={{ width: '100%', padding: '16px 0', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+            <button 
+              onClick={handleCheckout}
+              className="btn-shimmer" 
+              style={{ width: '100%', padding: '16px 0', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+            >
               Checkout Now
             </button>
           </div>
