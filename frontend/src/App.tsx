@@ -4,7 +4,7 @@ import logo from './assets/logo.png';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// ─── UTILITY: price normaliser (FIX #2 — guard against numeric type from API) ─
+// ─── UTILITY: price normaliser ────────────────────────────────────────────────
 const toNumber = (price: string | number): number =>
   typeof price === 'number' ? price : parseFloat(String(price).replace(/,/g, ''));
 
@@ -73,9 +73,8 @@ const GlobalStyles = () => (
       overflow-x: hidden;
     }
 
-    @media (pointer: fine) {
-      body, a, button, input { cursor: none !important; }
-    }
+    /* Force hide the default cursor everywhere */
+    body, a, button, input { cursor: none !important; }
 
     .page-enter { animation: pageIn 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
     @keyframes pageIn {
@@ -171,14 +170,6 @@ const GlobalStyles = () => (
       border-bottom: 1px solid rgba(140,134,128,0.15);
     }
 
-    @media (max-width: 768px) {
-      .desktop-nav-links { display: none !important; }
-      .mobile-menu-btn { display: flex !important; }
-    }
-    @media (min-width: 769px) {
-      .mobile-menu-btn { display: none !important; }
-    }
-
     @keyframes overlayIn {
       from { opacity: 0; }
       to   { opacity: 1; }
@@ -192,30 +183,36 @@ const GlobalStyles = () => (
     }
     .grid-item.visible { opacity: 1; transform: translateY(0); }
 
+    /* --- PREMIUM PHYSICS CURSOR STYLES --- */
     #cursor-dot {
-      position: fixed;
-      width: 8px; height: 8px;
+      position: fixed; top: 0; left: 0;
+      width: 6px; height: 6px;
       background: var(--ink);
       border-radius: 50%;
       pointer-events: none;
       z-index: 9999;
-      transform: translate(-50%, -50%);
-      transition: transform 0.08s linear, width 0.3s, height 0.3s, background 0.3s;
+      will-change: transform;
+      transition: background 0.3s, width 0.3s, height 0.3s;
     }
     #cursor-ring {
-      position: fixed;
-      width: 36px; height: 36px;
+      position: fixed; top: 0; left: 0;
+      width: 44px; height: 44px;
       border: 1px solid rgba(13,13,13,0.4);
       border-radius: 50%;
       pointer-events: none;
       z-index: 9998;
-      transform: translate(-50%, -50%);
-      transition: left 0.12s ease, top 0.12s ease, width 0.35s, height 0.35s, border-color 0.35s;
+      will-change: transform;
+      transition: width 0.3s ease, height 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
     }
     body:has(a:hover) #cursor-ring,
     body:has(button:hover) #cursor-ring {
-      width: 56px; height: 56px;
+      width: 60px; height: 60px;
+      background-color: rgba(201,169,110,0.1); /* Subtle gold tint on hover */
       border-color: var(--accent);
+    }
+    body:has(a:hover) #cursor-dot,
+    body:has(button:hover) #cursor-dot {
+      background: var(--accent);
     }
 
     .ticker-wrap { overflow: hidden; white-space: nowrap; display: flex; }
@@ -231,15 +228,13 @@ const GlobalStyles = () => (
     .toast-in  { animation: toastIn 0.4s cubic-bezier(0.22,1,0.36,1) forwards; }
     .toast-out { animation: toastOut 0.4s ease forwards; }
 
-    @media (min-width: 900px) {
-      .signup-left { display: block !important; flex: 1; }
-    }
+    /* New premium loader spin animation */
+    @keyframes spin { 100% { transform: rotate(360deg); } }
   `}</style>
 );
 
 // ─── HOOKS ────────────────────────────────────────────────────────────────────
 
-// FIX #5 — added [] dependency array to prevent new observer on every render
 function useReveal() {
   useEffect(() => {
     const els = document.querySelectorAll('.reveal');
@@ -254,10 +249,9 @@ function useReveal() {
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, []); // ← was missing; caused a new IntersectionObserver leak every render
+  }, []); 
 }
 
-// FIX #5 — same fix applied to grid reveal hook
 function useGridReveal() {
   useEffect(() => {
     const items = document.querySelectorAll('.grid-item');
@@ -273,35 +267,49 @@ function useGridReveal() {
     );
     items.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, []); // ← was missing
+  }, []);
 }
 
-// ─── CURSOR ───────────────────────────────────────────────────────────────────
+// ─── PHYSICS-BASED CUSTOM CURSOR ──────────────────────────────────────────────
 
 const CustomCursor = () => {
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
+  const requestRef = useRef<number>();
+  
+  // Track raw mouse position
+  const mouse = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  // Track delayed ring position
+  const ring = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(pointer: fine)');
-    setIsDesktop(mediaQuery.matches);
-    const handleMediaChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mediaQuery.addEventListener('change', handleMediaChange);
-    return () => mediaQuery.removeEventListener('change', handleMediaChange);
-  }, []);
-
-  useEffect(() => {
-    if (!isDesktop) return;
-    const onMove = (e: MouseEvent) => {
-      if (dotRef.current) { dotRef.current.style.left = e.clientX + 'px'; dotRef.current.style.top = e.clientY + 'px'; }
-      if (ringRef.current) { ringRef.current.style.left = e.clientX + 'px'; ringRef.current.style.top = e.clientY + 'px'; }
+    const onMouseMove = (e: MouseEvent) => {
+      mouse.current = { x: e.clientX, y: e.clientY };
+      // Move dot instantly
+      if (dotRef.current) {
+        dotRef.current.style.transform = `translate3d(calc(${e.clientX}px - 50%), calc(${e.clientY}px - 50%), 0)`;
+      }
     };
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, [isDesktop]);
 
-  if (!isDesktop) return null;
+    const renderLoop = () => {
+      // Smooth Lerp (Linear Interpolation) formula for the trailing ring
+      ring.current.x += (mouse.current.x - ring.current.x) * 0.15;
+      ring.current.y += (mouse.current.y - ring.current.y) * 0.15;
+      
+      if (ringRef.current) {
+        ringRef.current.style.transform = `translate3d(calc(${ring.current.x}px - 50%), calc(${ring.current.y}px - 50%), 0)`;
+      }
+      requestRef.current = requestAnimationFrame(renderLoop);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    requestRef.current = requestAnimationFrame(renderLoop);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, []);
 
   return (
     <>
@@ -354,9 +362,6 @@ const AnnouncementBar = () => {
 
 const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () => void }) => {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  // FIX #3 — track viewport width in state so gap updates on resize
-  const [isWide, setIsWide] = useState(() => window.innerWidth > 768);
   const prevCount = useRef(cartCount);
   const [badgePop, setBadgePop] = useState(false);
 
@@ -364,13 +369,6 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  // FIX #3 — resize listener to keep isWide in sync
-  useEffect(() => {
-    const onResize = () => setIsWide(window.innerWidth > 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   useEffect(() => {
@@ -385,83 +383,43 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
   ];
 
   return (
-    <>
-      <nav className="nav-glass" style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: scrolled ? '12px 24px' : '18px 48px',
-        transition: 'padding 0.4s ease',
-      }}>
-        <button
-          className="mobile-menu-btn"
-          onClick={() => setMobileMenuOpen(true)}
-          style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--ink)' }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="18" x2="20" y2="18" /></svg>
+    <nav className="nav-glass" style={{
+      position: 'sticky', top: 0, zIndex: 50,
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: scrolled ? '12px 48px' : '18px 48px',
+      transition: 'padding 0.4s ease',
+    }}>
+      <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+        <img src={logo} alt="WICXA Logo" style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }} />
+      </Link>
+
+      <div style={{ display: 'flex', gap: 36, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+        {navLinks.map(([to, label]) => (
+          <Link key={to} to={to} className="link-grow" style={{ color: 'var(--ink)', textDecoration: 'none' }}>{label}</Link>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+        <button onClick={openSearch} style={{ background: 'none', border: 'none', color: 'var(--ink)', padding: 4 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
         </button>
-
-        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-          <img src={logo} alt="WICXA Logo" style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }} />
+        <Link to="/signup" style={{ color: 'var(--ink)', padding: 4, display: 'flex' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
         </Link>
-
-        <div className="desktop-nav-links" style={{ display: 'flex', gap: 36, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
-          {navLinks.map(([to, label]) => (
-            <Link key={to} to={to} className="link-grow" style={{ color: 'var(--ink)', textDecoration: 'none' }}>{label}</Link>
-          ))}
-        </div>
-
-        {/* FIX #3 — use reactive isWide instead of inline window.innerWidth */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: isWide ? 22 : 12 }}>
-          <button onClick={openSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)', padding: 4 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-          </button>
-          <Link className="desktop-nav-links" to="/signup" style={{ color: 'var(--ink)', padding: 4, display: 'flex' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-          </Link>
-          <Link to="/cart" style={{ position: 'relative', color: 'var(--ink)', padding: 4 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
-            {cartCount > 0 && (
-              <span className={badgePop ? 'badge-pop' : ''} style={{
-                position: 'absolute', top: -2, right: -6,
-                background: 'var(--accent)', color: '#fff',
-                fontSize: 9, fontWeight: 700,
-                width: 16, height: 16,
-                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{cartCount}</span>
-            )}
-          </Link>
-        </div>
-      </nav>
-
-      {mobileMenuOpen && (
-        <div className="overlay-in" style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          background: 'var(--cream)', display: 'flex', flexDirection: 'column',
-          padding: '24px 32px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 60 }}>
-            <img src={logo} alt="WICXA Logo" style={{ height: 40 }} />
-            <button onClick={() => setMobileMenuOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-            </button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            {navLinks.map(([to, label]) => (
-              <Link
-                key={to} to={to}
-                onClick={() => setMobileMenuOpen(false)}
-                style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 40, color: 'var(--ink)', textDecoration: 'none' }}
-              >
-                {label}
-              </Link>
-            ))}
-            <div style={{ height: 1, background: 'var(--warm-mid)', margin: '16px 0' }} />
-            <Link to="/signup" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', textDecoration: 'none', fontFamily: 'Inter, sans-serif' }}>Member Access</Link>
-            <Link to="/contact" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone)', textDecoration: 'none', fontFamily: 'Inter, sans-serif' }}>Contact Us</Link>
-          </div>
-        </div>
-      )}
-    </>
+        <Link to="/cart" style={{ position: 'relative', color: 'var(--ink)', padding: 4 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+          {cartCount > 0 && (
+            <span className={badgePop ? 'badge-pop' : ''} style={{
+              position: 'absolute', top: -2, right: -6,
+              background: 'var(--accent)', color: '#fff',
+              fontSize: 9, fontWeight: 700,
+              width: 16, height: 16,
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>{cartCount}</span>
+          )}
+        </Link>
+      </div>
+    </nav>
   );
 };
 
@@ -473,7 +431,6 @@ const SearchOverlay = ({ isOpen, onClose, products }: { isOpen: boolean; onClose
 
   useEffect(() => { if (!isOpen) setQuery(''); }, [isOpen]);
 
-  // FIX #10 — Escape key closes the search overlay
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -696,7 +653,6 @@ const HomePage = ({ addToCart, products }: any) => {
   const heroRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // FIX #6 — wrapped in requestAnimationFrame to prevent scroll jank
   useEffect(() => {
     let rafId: number;
     const onScroll = () => {
@@ -840,7 +796,6 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
         {/* Images */}
         <div>
           <div style={{ overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)', marginBottom: 12 }}>
-            {/* FIX #11 — descriptive alt text includes view index for screen readers */}
             <img
               src={product.images[activeImg]}
               alt={`${product.name} — view ${activeImg + 1} of ${product.images.length}`}
@@ -855,7 +810,6 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
                 cursor: 'pointer', overflow: 'hidden', aspectRatio: '4/5', background: 'var(--warm-mid)',
                 transition: 'border-color 0.3s',
               }}>
-                {/* Thumbnails are decorative — empty alt is correct */}
                 <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </button>
             ))}
@@ -948,12 +902,9 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
 
 // ─── CART PAGE ────────────────────────────────────────────────────────────────
 
-// FIX #9 — cart items can now be removed and quantity adjusted
 const CartPage = ({ cartItems, setCart }: { cartItems: any[]; setCart: React.Dispatch<React.SetStateAction<any[]>> }) => {
   useReveal();
   const navigate = useNavigate();
-
-  // FIX #2 — use toNumber helper for safe price parsing
   const total = cartItems.reduce((s, i) => s + toNumber(i.price) * i.quantity, 0);
 
   const removeItem = (index: number) => {
@@ -991,7 +942,6 @@ const CartPage = ({ cartItems, setCart }: { cartItems: any[]; setCart: React.Dis
                 <div style={{ flex: 1 }}>
                   <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{item.name}</p>
                   <p style={{ fontSize: 12, color: 'var(--stone)', letterSpacing: '0.08em', marginBottom: 12 }}>Size: {item.selectedSize}</p>
-                  {/* Quantity controls */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid var(--warm-mid)', width: 'fit-content' }}>
                     <button onClick={() => changeQty(i, -1)} style={{ background: 'none', border: 'none', padding: '4px 12px', fontSize: 16, color: 'var(--stone)', cursor: 'pointer' }}>−</button>
                     <span style={{ fontSize: 13, minWidth: 24, textAlign: 'center' }}>{item.quantity}</span>
@@ -1036,7 +986,6 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
   const navigate = useNavigate();
   const hasRedirected = useRef(false);
 
-  // FIX #4 — use a ref flag so the redirect only fires once, not on every re-render
   useEffect(() => {
     if (cartItems.length === 0 && !hasRedirected.current) {
       hasRedirected.current = true;
@@ -1052,7 +1001,6 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
   const [couponMsg, setCouponMsg] = useState({ text: '', type: '' });
   const [loading, setLoading] = useState(false);
 
-  // FIX #2 — use toNumber helper
   const subtotal = cartItems.reduce((s, i) => s + toNumber(i.price) * i.quantity, 0);
   const deliveryFee = deliveryZone === 'ctg-reg' ? 80 : deliveryZone === 'ctg-urg' ? 150 : 130;
   const grandTotal = (subtotal + deliveryFee) - discount;
@@ -1062,7 +1010,6 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
     if (errors[field]) setErrors({ ...errors, [field]: '' });
   };
 
-  // FIX #12 — coupon validation moved to a server call; codes no longer exposed client-side
   const applyCoupon = async () => {
     if (!coupon.trim()) return;
     try {
@@ -1084,7 +1031,6 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
     }
   };
 
-  // FIX #13 — PDF logo race condition: check img.complete before assigning onload
   const generatePDF = (orderId: string) => {
     const doc = new jsPDF();
     doc.setFillColor(248, 245, 240);
@@ -1160,13 +1106,11 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
     };
 
     img.src = logo;
-    // FIX #13 — handle both cached (img.complete) and uncached logo
     if (img.complete) {
       render();
     } else {
       img.onload = render;
       img.onerror = () => {
-        // Render without logo if it fails to load
         doc.save(`${orderId}_WICXA.pdf`);
       };
     }
@@ -1205,7 +1149,6 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
 
       generatePDF(generatedOrderId);
       setCart([]);
-      // FIX #8 — replaced browser alert() with the existing Toast system
       setToast('Order placed! Invoice is downloading.');
       navigate('/');
 
@@ -1366,7 +1309,6 @@ const SignUpPage = () => {
     return errs;
   };
 
-  // FIX #14 — wired to real backend endpoint; shows clear error if unavailable
   const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
@@ -1671,7 +1613,6 @@ const App = () => {
       .catch(err => { console.error('Error fetching products:', err); setLoading(false); });
   }, []);
 
-  // FIX #1 — merge by (id + size) instead of always appending a new entry
   const addToCart = useCallback((product: any, selectedSize = 'L', quantity = 1) => {
     setCart((prev) => {
       const existingIdx = prev.findIndex(
@@ -1687,8 +1628,6 @@ const App = () => {
     setToast(`${product.name.split(' ').slice(0, 3).join(' ')} added to bag`);
   }, []);
 
-  // FIX #9 — pass setCart to CartPage so items can be removed/quantity changed
-  // FIX #8 — pass setToast to CheckoutPage so it can use Toast instead of alert()
   return (
     <Router>
       <ScrollToTop />
@@ -1703,8 +1642,9 @@ const App = () => {
 
         <main style={{ flex: 1 }}>
           {loading ? (
-            <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 24, fontStyle: 'italic', color: 'var(--stone)' }}>Loading Collection...</p>
+            <div className="page-enter" style={{ height: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
+              <div style={{ width: 44, height: 44, border: '2px solid rgba(13,13,13,0.1)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin 1s cubic-bezier(0.22, 1, 0.36, 1) infinite' }} />
+              <p style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 16, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--ink)' }}>Curating Collection</p>
             </div>
           ) : (
             <PageWrapper>
@@ -1712,9 +1652,7 @@ const App = () => {
                 <Route path="/" element={<HomePage addToCart={addToCart} products={products} />} />
                 <Route path="/men" element={<CollectionPage gender="Men" addToCart={addToCart} products={products} />} />
                 <Route path="/women" element={<CollectionPage gender="Women" addToCart={addToCart} products={products} />} />
-                {/* FIX #9 — setCart passed so cart items are editable */}
                 <Route path="/cart" element={<CartPage cartItems={cart} setCart={setCart} />} />
-                {/* FIX #8 — setToast passed so checkout uses Toast not alert() */}
                 <Route path="/checkout" element={<CheckoutPage cartItems={cart} setCart={setCart} setToast={setToast} />} />
                 <Route path="/product/:id" element={<ProductDetailPage addToCart={addToCart} products={products} />} />
                 <Route path="/signup" element={<SignUpPage />} />
