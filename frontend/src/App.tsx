@@ -275,7 +275,7 @@ function useGridReveal() {
 const CustomCursor = () => {
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number>(0);
   
   // Track raw mouse position
   const mouse = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -1283,6 +1283,7 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
     </div>
   );
 };
+
 
 // ─── SIGN UP PAGE ─────────────────────────────────────────────────────────────
 
