@@ -674,7 +674,7 @@ const HomePage = ({ addToCart, products }: any) => {
       <header ref={heroRef} style={{ position: 'relative', height: '92vh', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', paddingBottom: 80, paddingLeft: '5%' }}>
         <img
           ref={imgRef}
-          src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=2565&auto=format&fit=crop"
+          src="https://scontent.fcgp29-1.fna.fbcdn.net/v/t39.30808-6/482024482_1169582058507415_8198814111115185623_n.jpg?stp=dst-jpg_tt6&cstp=mx2048x1069&ctp=s2048x1069&_nc_cat=101&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=r8EOu84VRboQ7kNvwGHBhT4&_nc_oc=AdqvBw44gPhZX3hI5dGNvyXw-CUAYNlc4sTrbJBQ1EfdZyxTIyWG2CEFlfRP2JN0OOc&_nc_zt=23&_nc_ht=scontent.fcgp29-1.fna&_nc_gid=aAfl12BjDyvEw8EzpGUFCw&_nc_ss=7a2a8&oh=00_Af9wFTavD4_075TRdPYXlY0ibUlDjH-3amPdOPdoqziYKQ&oe=6A4247E7"
           alt="Hero"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '110%', objectFit: 'cover', top: '-5%' }}
         />
