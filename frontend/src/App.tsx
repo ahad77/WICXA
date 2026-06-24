@@ -71,6 +71,11 @@ const GlobalStyles = () => (
       overflow-x: hidden;
     }
 
+    /* Hide default cursor only on devices with a real mouse */
+    @media (pointer: fine) {
+      body, a, button, input { cursor: none !important; }
+    }
+
     /* Page transition */
     .page-enter { animation: pageIn 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
     @keyframes pageIn {
@@ -286,15 +291,31 @@ function useGridReveal() {
 const CustomCursor = () => {
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
+    // Determine if the device has a physical mouse
+    const mediaQuery = window.matchMedia('(pointer: fine)');
+    setIsDesktop(mediaQuery.matches);
+
+    const handleMediaChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mediaQuery.addEventListener('change', handleMediaChange);
+    return () => mediaQuery.removeEventListener('change', handleMediaChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) return; // Do not attach mousemove events on mobile devices
+
     const onMove = (e: MouseEvent) => {
       if (dotRef.current) { dotRef.current.style.left = e.clientX + 'px'; dotRef.current.style.top = e.clientY + 'px'; }
       if (ringRef.current) { ringRef.current.style.left = e.clientX + 'px'; ringRef.current.style.top = e.clientY + 'px'; }
     };
     window.addEventListener('mousemove', onMove);
     return () => window.removeEventListener('mousemove', onMove);
-  }, []);
+  }, [isDesktop]);
+
+  // Do not render the custom cursor HTML if on a mobile/touch device
+  if (!isDesktop) return null;
 
   return (
     <>
@@ -362,7 +383,6 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
     prevCount.current = cartCount;
   }, [cartCount]);
 
-  // We removed 'Home' from this list, as the Logo serves that purpose.
   const navLinks = [
     ['/men', 'Men'], 
     ['/women', 'Women'], 
@@ -390,7 +410,7 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
           <img src={logo} alt="WICXA Logo" style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }} />
         </Link>
 
-        {/* Desktop Links (Hidden on mobile) */}
+        {/* Desktop Links */}
         <div className="desktop-nav-links" style={{ display: 'flex', gap: 36, fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
           {navLinks.map(([to, label]) => (
             <Link key={to} to={to} className="link-grow" style={{ color: 'var(--ink)', textDecoration: 'none' }}>{label}</Link>
@@ -625,6 +645,7 @@ const ProductCard = ({ product, addToCart, index }: any) => {
             src={hovered && product.images[1] ? product.images[1] : product.images[0]}
             alt={product.name}
             className="img-zoom"
+            loading="lazy"
             style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.9s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease' }}
           />
         </Link>
@@ -743,7 +764,7 @@ const HomePage = ({ addToCart, products }: any) => {
             { to: '/men', label: 'Heritage', img: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop' },
           ].map(({ to, label, img }, i) => (
             <Link key={label} to={to} className={`grid-item reveal-delay-${i + 1}`} style={{ display: 'block', position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: 'var(--warm-mid)', textDecoration: 'none' }}>
-              <img src={img} alt={label} className="img-zoom" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={img} alt={label} className="img-zoom" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(13,13,13,0.55) 0%, transparent 50%)' }} />
               <span style={{ position: 'absolute', bottom: 24, left: 24, color: '#fff', fontFamily: 'Cormorant Garamond, serif', fontSize: 28, fontWeight: 400, letterSpacing: '0.12em' }}>{label}</span>
             </Link>
