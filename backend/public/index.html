@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>WICXA Admin Panel</title>
+<style>
+  * { box-sizing: border-box; font-family: 'Inter', Arial, sans-serif; }
+  body { margin: 0; background: #FBF9F6; color: #0D0D0D; }
+  header { background: #0D0D0D; color: #fff; padding: 18px 28px; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: 2px; font-weight: 500; }
+  nav button { background: none; border: 1px solid #555; color: #fff; padding: 6px 14px; margin-left: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  nav button.active { background: #fff; color: #0D0D0D; }
+  .container { max-width: 1100px; margin: 28px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 22px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  label { display: block; font-size: 12px; margin: 10px 0 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #555; }
+  input, textarea, select { width: 100%; padding: 9px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+  .row { display: flex; gap: 14px; }
+  .row > div { flex: 1; }
+  button.primary { background: #0D0D0D; color: #fff; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; margin-top: 16px; font-size: 14px; }
+  button.secondary { background: #ddd; color: #0D0D0D; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; margin-top: 16px; margin-left: 8px; }
+  button.danger { background: #c0392b; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+  th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+  img.thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
+  #status { font-size: 13px; margin-top: 10px; min-height: 18px; }
+  #status.error { color: #c0392b; }
+  #status.success { color: #1a7a3c; }
+  .key-bar { display: flex; gap: 8px; align-items: center; }
+  .key-bar input { flex: 1; }
+  .hidden { display: none; }
+  small.hint { color: #888; display: block; margin-top: 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>WICXA · ADMIN</h1>
+  <nav>
+    <button id="navProducts" class="active" onclick="showTab('products')">Products</button>
+    <button id="navOrders" onclick="showTab('orders')">Orders</button>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <label>Admin Key</label>
+    <div class="key-bar">
+      <input id="adminKey" type="password" placeholder="Enter your admin secret key" />
+      <button class="primary" onclick="saveKey()" style="margin-top:0">Save</button>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <!-- ─────────── PRODUCTS TAB ─────────── -->
+  <div id="productsTab">
+    <div class="card">
+      <h2 id="formTitle">Add New Product</h2>
+      <form id="productForm">
+        <input type="hidden" id="productId" />
+        <div class="row">
+          <div>
+            <label>Name *</label>
+            <input id="name" required />
+          </div>
+          <div>
+            <label>Category *</label>
+            <input id="category" placeholder="e.g. Men, Women, T-Shirts" required />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Price *</label>
+            <input id="price" placeholder="e.g. 1450 or 1450 BDT" required />
+          </div>
+          <div>
+            <label>Active</label>
+            <select id="isActive">
+              <option value="true">Yes — visible on storefront</option>
+              <option value="false">No — hidden</option>
+            </select>
+          </div>
+        </div>
+        <label>Description</label>
+        <textarea id="description" rows="3"></textarea>
+
+        <label>Upload Images (up to 6)</label>
+        <input id="images" type="file" multiple accept="image/png, image/jpeg, image/webp" />
+        <small class="hint">Or paste direct image URLs below instead of/alongside uploading.</small>
+
+        <label>Image URLs (comma separated, optional)</label>
+        <input id="imageUrls" placeholder="https://.../img1.jpg, https://.../img2.jpg" />
+
+        <div id="replaceImagesRow" class="hidden">
+          <label>When editing, new images should:</label>
+          <select id="replaceImages">
+            <option value="false">Add to existing images</option>
+            <option value="true">Replace all existing images</option>
+          </select>
+        </div>
+
+        <button type="submit" class="primary">Save Product</button>
+        <button type="button" class="secondary" onclick="resetForm()">Clear</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Product List</h2>
+      <button class="secondary" style="margin-top:0" onclick="loadProducts()">Refresh List</button>
+      <table>
+        <thead>
+          <tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Active</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="productTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─────────── ORDERS TAB ─────────── -->
+  <div id="ordersTab" class="hidden">
+    <div class="card">
+      <h2>Incoming Orders</h2>
+      <button class="secondary" style="margin-top:0" onclick="loadOrders()">Refresh Orders</button>
+      <table>
+        <thead>
+          <tr><th>Order ID</th><th>Customer</th><th>Phone</th><th>Items</th><th>Total</th><th>Date</th></tr>
+        </thead>
+        <tbody id="orderTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API_BASE = '/api/admin';
+
+  function getKey() { return localStorage.getItem('wicxa_admin_key') || ''; }
+  function saveKey() {
+    localStorage.setItem('wicxa_admin_key', document.getElementById('adminKey').value);
+    setStatus('Admin key saved in this browser.', 'success');
+    loadProducts();
+  }
+  document.getElementById('adminKey').value = getKey();
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = type || '';
+  }
+
+  function showTab(tab) {
+    document.getElementById('productsTab').classList.toggle('hidden', tab !== 'products');
+    document.getElementById('ordersTab').classList.toggle('hidden', tab !== 'orders');
+    document.getElementById('navProducts').classList.toggle('active', tab === 'products');
+    document.getElementById('navOrders').classList.toggle('active', tab === 'orders');
+    if (tab === 'orders') loadOrders();
+  }
+
+  // ── PRODUCTS ──
+  async function loadProducts() {
+    try {
+      const res = await fetch(`${API_BASE}/products`, { headers: { 'x-admin-key': getKey() } });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to load products');
+      const products = await res.json();
+      const tbody = document.getElementById('productTable');
+      tbody.innerHTML = '';
+      products.forEach(p => {
+        const img = (p.images && p.images[0]) ? `<img class="thumb" src="${p.images[0]}" />` : '—';
+        tbody.innerHTML += `
+          <tr>
+            <td>${img}</td>
+            <td>${p.name}</td>
+            <td>${p.category}</td>
+            <td>${p.price}</td>
+            <td>${p.isActive === false ? 'No' : 'Yes'}</td>
+            <td>
+              <button class="secondary" style="margin-top:0" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Edit</button>
+              <button class="danger" onclick="deleteProduct('${p._id}')">Delete</button>
+            </td>
+          </tr>`;
+      });
+      setStatus(`Loaded ${products.length} products.`, 'success');
+    } catch (err) {
+      setStatus(err.message, 'error');
+    }
+  }
+
+  function editProduct(p) {
+    document.getElementById('formTitle').textContent = 'Edit Product';
+    document.getElementById('productId').value = p._id;
+    document.getElementById('name').value = p.name || '';
+    document.getElementById('category').value = p.category || '';
+    document.getElementById('price').value = p.price || '';
+    document.getElementById('description').value = p.description || '';
+    document.getElementById('isActive').value = p.isActive === false ? 'false' : 'true';
+    document.getElementById('replaceImagesRow').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function resetForm() {
+    document.getElementById('formTitle').textContent = 'Add New Product';
+    document.getElementById('productForm').reset();
+    document.getElementById('productId').value = '';
+    document.getElementById('replaceImagesRow').classList.add('hidden');
+  }
+
+  async function deleteProduct(id) {
+    if (!confirm('Delete this product permanently?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+      if (!res.ok) throw new Error((await res.json()).error || 'Delete failed');
+      setStatus('Product deleted.', 'success');
+      loadProducts();
+    } catch (err) {
+      setStatus(err.message, 'error');
+    }
+  }
+
+  document.getElementById('productForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('productId').value;
+    const formData = new FormData();
+    formData.append('name', document.getElementById('name').value);
+    formData.append('category', document.getElementById('category').value);
+    formData.append('price', document.getElementById('price').value);
+    formData.append('description', document.getElementById('description').value);
+    formData.append('isActive', document.getElementById('isActive').value);
+    formData.append('imageUrls', document.getElementById('imageUrls').value);
+    if (id) formData.append('replaceImages', document.getElementById('replaceImages').value);
+
+    const files = document.getElementById('images').files;
+    for (let i = 0; i < files.length; i++) formData.append('images', files[i]);
+
+    try {
+      const url = id ? `${API_BASE}/products/${id}` : `${API_BASE}/products`;
+      const method = id ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: { 'x-admin-key': getKey() }, body: formData });
+      if (!res.ok) throw new Error((await res.json()).error || 'Save failed');
+      setStatus(id ? 'Product updated.' : 'Product created.', 'success');
+      resetForm();
+      loadProducts();
+    } catch (err) {
+      setStatus(err.message, 'error');
+    }
+  });
+
+  // ── ORDERS ──
+  async function loadOrders() {
+    try {
+      const res = await fetch(`${API_BASE}/orders`, { headers: { 'x-admin-key': getKey() } });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to load orders');
+      const orders = await res.json();
+      const tbody = document.getElementById('orderTable');
+      tbody.innerHTML = '';
+      orders.forEach(o => {
+        const itemCount = Array.isArray(o.items) ? o.items.length : 0;
+        const total = o.totals && o.totals.grandTotal ? o.totals.grandTotal : '—';
+        const date = o.createdAt ? new Date(o.createdAt).toLocaleString() : '—';
+        tbody.innerHTML += `
+          <tr>
+            <td>${o.orderId || o._id}</td>
+            <td>${o.customer?.name || '—'}</td>
+            <td>${o.customer?.phone || '—'}</td>
+            <td>${itemCount}</td>
+            <td>${total}</td>
+            <td>${date}</td>
+          </tr>`;
+      });
+      setStatus(`Loaded ${orders.length} orders.`, 'success');
+    } catch (err) {
+      setStatus(err.message, 'error');
+    }
+  }
+
+  loadProducts();
+</script>
+
+</body>
+</html>

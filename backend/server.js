@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -14,18 +15,19 @@ mongoose.connect(process.env.MONGO_URI)
 
 // ─── DATABASE SCHEMAS ─────────────────────────────────────────────────────────
 
-// Product Schema
+// Product Schema (unchanged — same shape your frontend already expects)
 const productSchema = new mongoose.Schema({
   id: String,
   name: String,
   price: String,
   description: String,
   category: String,
-  images: [String]
-});
+  images: [String],
+  isActive: { type: Boolean, default: true }, // NEW — lets you hide a product without deleting it
+}, { timestamps: true });
 const Product = mongoose.model('Product', productSchema);
 
-// Order Schema (Saves the customer checkout data)
+// Order Schema (unchanged)
 const orderSchema = new mongoose.Schema({
   orderId: String,
   customer: {
@@ -46,12 +48,16 @@ const orderSchema = new mongoose.Schema({
 });
 const Order = mongoose.model('Order', orderSchema);
 
-// ─── ROUTES ───────────────────────────────────────────────────────────────────
+// ─── STATIC FILES ─────────────────────────────────────────────────────────────
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));   // serves uploaded product images
+app.use('/admin', express.static(path.join(__dirname, 'public')));      // serves the admin panel UI
+
+// ─── EXISTING PUBLIC ROUTES (unchanged — your frontend keeps working as-is) ───
 
 // 1. Get all products
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find({ isActive: { $ne: false } });
     res.json(products);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -69,8 +75,17 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
+// ─── NEW: ADMIN ROUTES (protected — for uploading/managing products) ─────────
+const adminProductRoutes = require('./routes/adminProducts')(Product);
+app.use('/api/admin', adminProductRoutes);
+
+// ─── NEW: ADMIN ORDER VIEW (so you can see incoming orders too) ──────────────
+const adminOrderRoutes = require('./routes/adminOrders')(Order);
+app.use('/api/admin', adminOrderRoutes);
+
 // ─── START SERVER ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🛠️  Admin panel available at /admin`);
 });
