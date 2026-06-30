@@ -3,6 +3,27 @@ import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, u
 import logo from './assets/logo.png';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { apiUrl } from './config';
+
+// ─── SHARED TYPES ─────────────────────────────────────────────────────────────
+export interface Product {
+  _id?: string;
+  id?: string;
+  name: string;
+  price: string | number;
+  description?: string;
+  category?: string;
+  images?: string[];
+  isActive?: boolean;
+}
+
+export interface CartItem extends Product {
+  selectedSize: string;
+  quantity: number;
+}
+
+export type AddToCart = (product: Product, selectedSize?: string, quantity?: number) => void;
+export type SetCart = React.Dispatch<React.SetStateAction<CartItem[]>>;
 
 // ─── UTILITY: price normaliser (FIX #2 — guard against numeric type from API) ─
 const toNumber = (price: string | number): number =>
@@ -281,11 +302,13 @@ function useGridReveal() {
 const CustomCursor = () => {
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
+  // Initialise lazily so we don't call setState synchronously inside an effect
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(pointer: fine)');
-    setIsDesktop(mediaQuery.matches);
     const handleMediaChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
     mediaQuery.addEventListener('change', handleMediaChange);
     return () => mediaQuery.removeEventListener('change', handleMediaChange);
@@ -315,9 +338,12 @@ const CustomCursor = () => {
 
 const Toast = ({ message, onDone }: { message: string; onDone: () => void }) => {
   const [leaving, setLeaving] = useState(false);
+  // Keep the latest onDone in a ref so the timers don't reset on every parent render
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
   useEffect(() => {
     const t1 = setTimeout(() => setLeaving(true), 2200);
-    const t2 = setTimeout(() => onDone(), 2700);
+    const t2 = setTimeout(() => onDoneRef.current(), 2700);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
   return (
@@ -671,7 +697,7 @@ const ProductCard = ({ product, addToCart, index }: any) => {
   );
 };
 
-// ─── PRODUCT GRID ─────────────────────────────────────────────────────────────
+// ─── PRODUCT GRID ────────────────────────────��────────────────────────────────
 
 const ProductGrid = ({ title, products, addToCart }: any) => {
   useGridReveal();
@@ -1029,7 +1055,7 @@ const CartPage = ({ cartItems, setCart }: { cartItems: any[]; setCart: React.Dis
   );
 };
 
-// ─── CHECKOUT PAGE ────────────────────────────────────────────────────────────
+// ─── CHECKOUT PAGE ───────────────────────────────────────────────���────────────
 
 const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setCart: any; setToast: (msg: string) => void }) => {
   useReveal();
@@ -1066,7 +1092,7 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
   const applyCoupon = async () => {
     if (!coupon.trim()) return;
     try {
-      const res = await fetch('https://wicxa.onrender.com/api/coupons/validate', {
+      const res = await fetch(apiUrl('/api/coupons/validate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: coupon.toUpperCase(), subtotal }),
@@ -1195,7 +1221,7 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
     };
 
     try {
-      const response = await fetch('https://wicxa.onrender.com/api/orders', {
+      const response = await fetch(apiUrl('/api/orders'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData),
@@ -1373,7 +1399,7 @@ const SignUpPage = () => {
 
     setLoading(true);
     try {
-      const res = await fetch('https://wicxa.onrender.com/api/auth/register', {
+      const res = await fetch(apiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1658,21 +1684,21 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => {
 // ─── APP ──────────────────────────────────────────────────────────────────────
 
 const App = () => {
-  const [cart, setCart] = useState<any[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('https://wicxa.onrender.com/api/products')
+    fetch(apiUrl('/api/products'))
       .then(res => res.json())
       .then(data => { setProducts(data); setLoading(false); })
       .catch(err => { console.error('Error fetching products:', err); setLoading(false); });
   }, []);
 
   // FIX #1 — merge by (id + size) instead of always appending a new entry
-  const addToCart = useCallback((product: any, selectedSize = 'L', quantity = 1) => {
+  const addToCart = useCallback((product: Product, selectedSize = 'L', quantity = 1) => {
     setCart((prev) => {
       const existingIdx = prev.findIndex(
         (item) => (item._id || item.id) === (product._id || product.id) && item.selectedSize === selectedSize

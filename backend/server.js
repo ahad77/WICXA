@@ -48,6 +48,15 @@ const orderSchema = new mongoose.Schema({
 });
 const Order = mongoose.model('Order', orderSchema);
 
+// User Schema (for customer registration)
+const userSchema = new mongoose.Schema({
+  firstName: String,
+  lastName: String,
+  email: { type: String, unique: true, lowercase: true, trim: true },
+  passwordHash: String,
+}, { timestamps: true });
+const User = mongoose.model('User', userSchema);
+
 // ─── STATIC FILES ─────────────────────────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));   // serves uploaded product images
 app.use('/admin', express.static(path.join(__dirname, 'public')));      // serves the admin panel UI
@@ -74,6 +83,12 @@ app.post('/api/orders', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// 3. Register a new customer account
+app.use('/api/auth', require('./routes/auth')(User));
+
+// 4. Validate a coupon code (codes stay server-side)
+app.use('/api/coupons', require('./routes/coupons')());
 
 // ─── NEW: ADMIN ROUTES (protected — for uploading/managing products) ─────────
 const adminProductRoutes = require('./routes/adminProducts')(Product);
