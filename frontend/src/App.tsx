@@ -625,7 +625,7 @@ const Footer = () => (
     </div>
 
     <div style={{ display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--warm-mid)', paddingTop: 32 }}>
-      <p style={{ fontSize: 11, color: 'var(--stone)', letterSpacing: '0.1em' }}>© 2026 WICXA. All rights reserved.</p>
+      <p style={{ fontSize: 11, color: 'var(--stone)', letterSpacing: '0.1em' }}>© 2026 WICXA. All rights reserved.\n Developed by Aetheriium.</p>
     </div>
   </footer>
 );
