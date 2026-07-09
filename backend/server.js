@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path'); // Added path module for static routing
+const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
@@ -9,17 +9,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ─── SERVE ADMIN PANEL STATIC FILES ──────────────────────────────────────────
-// This tells Express to serve files from your local 'admin' folder when /admin is requested
-app.use('/admin', express.static(path.join(__dirname, 'admin')));
+// ─── AI SETUP (GEMINI) ────────────────────────────────────────────────────────
+// We initialize the Google Gemini AI using an API key from our .env variables
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // ─── CONNECT TO MONGODB ───────────────────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('🔥 Connected to MongoDB Atlas!'))
   .catch(err => console.error("Database connection error:", err));
-
-// ─── GEMINI AI SETUP ──────────────────────────────────────────────────────────
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "MISSING_KEY");
 
 // ─── DATABASE SCHEMAS ─────────────────────────────────────────────────────────
 const productSchema = new mongoose.Schema({
@@ -54,23 +51,7 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// 2. Upload/Add new product
-app.post('/api/products', async (req, res) => {
-  const adminKey = req.headers['x-admin-key'];
-  if (adminKey !== process.env.ADMIN_SECRET_KEY) {
-    return res.status(401).json({ message: "Unauthorized. Invalid Admin Key." });
-  }
-
-  try {
-    const newProduct = new Product(req.body);
-    const savedProduct = await newProduct.save();
-    res.status(201).json({ message: "Product added successfully!", product: savedProduct });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// 3. Submit a new order
+// 2. Submit a new order
 app.post('/api/orders', async (req, res) => {
   try {
     const newOrder = new Order(req.body);
@@ -81,49 +62,46 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// 4. Validate Coupon
-app.post('/api/coupons/validate', (req, res) => {
-  const { code, subtotal } = req.body;
-  if (code === 'WICXA10') {
-    res.json({ discount: subtotal * 0.10, message: '10% Discount Applied!' });
-  } else if (code === 'FREESHIP') {
-    res.json({ discount: 150, message: 'Free Shipping Applied!' });
-  } else {
-    res.status(400).json({ message: 'Invalid coupon code' });
-  }
-});
-
-// 5. Gemini AI Chatbot Route
+// 3. AI Chatbot Route
 app.post('/api/chat', async (req, res) => {
-  const { message } = req.body;
-  if (!message) return res.status(400).json({ error: "Message is required" });
-
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const prompt = `
-      You are the official luxury styling assistant for WICXA, a premium streetwear and clothing brand in Bangladesh. 
-      Keep your answers short, stylish, and highly professional. Limit responses to 2-3 sentences. 
-      Prices are in BDT. Delivery inside Chattogram is BDT 80-150, outside is BDT 130. 
-      Customer says: "${message}"
-    `;
-    const result = await model.generateContent(prompt);
-    const response = await result.response.text();
+    const { message } = req.body;
     
-    res.json({ response });
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({ response: "AI is currently offline. The store owner needs to add the GEMINI_API_KEY to the server." });
+    }
+
+    // Use Gemini 1.5 Flash for fast chat responses
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    // We give the AI a "System Prompt" so it knows how to act
+    const prompt = `You are a sophisticated, elegant, and highly helpful AI shopping assistant for a premium minimalist fashion brand named "WICXA" located in Bangladesh. 
+    Keep your answers very concise, friendly, and stylish. Use short paragraphs. 
+    The customer says: "${message}"`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    
+    res.json({ response: response.text() });
   } catch (error) {
     console.error("AI Error:", error);
-    res.status(500).json({ error: "Failed to generate AI response" });
+    res.status(500).json({ response: "I'm sorry, I am having trouble connecting to the styling network right now." });
   }
 });
 
-// FALLBACK ROUTE FOR ADMIN PANEL (In case of deep client-side refreshes)
-app.get('/admin/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin', 'index.html'));
+// ─── SERVE ADMIN PANEL STATIC FILES ──────────────────────────────────────────
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
+app.get(['/admin', '/admin/*'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin', 'index.html'), (err) => {
+    if (err) {
+      res.status(404).send("Error: Could not find the admin/index.html file. Make sure your 'admin' folder is inside the 'backend' folder and pushed to GitHub.");
+    }
+  });
 });
 
 // ─── START SERVER ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.get('/', (req, res) => res.send('WICXA API Engine Active'));
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
