@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path'); // Added path module for static routing
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
@@ -8,13 +9,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ─── SERVE ADMIN PANEL STATIC FILES ──────────────────────────────────────────
+// This tells Express to serve files from your local 'admin' folder when /admin is requested
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
 // ─── CONNECT TO MONGODB ───────────────────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('🔥 Connected to MongoDB Atlas!'))
   .catch(err => console.error("Database connection error:", err));
 
 // ─── GEMINI AI SETUP ──────────────────────────────────────────────────────────
-// Ensure you have added GEMINI_API_KEY to your Render environment variables
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "MISSING_KEY");
 
 // ─── DATABASE SCHEMAS ─────────────────────────────────────────────────────────
@@ -50,7 +54,7 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// 2. Upload/Add new product (Requires ADMIN_SECRET_KEY in Render)
+// 2. Upload/Add new product
 app.post('/api/products', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   if (adminKey !== process.env.ADMIN_SECRET_KEY) {
@@ -83,7 +87,7 @@ app.post('/api/coupons/validate', (req, res) => {
   if (code === 'WICXA10') {
     res.json({ discount: subtotal * 0.10, message: '10% Discount Applied!' });
   } else if (code === 'FREESHIP') {
-    res.json({ discount: 150, message: 'Free Shipping Applied!' }); // Max shipping deduction
+    res.json({ discount: 150, message: 'Free Shipping Applied!' });
   } else {
     res.status(400).json({ message: 'Invalid coupon code' });
   }
@@ -112,8 +116,14 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// FALLBACK ROUTE FOR ADMIN PANEL (In case of deep client-side refreshes)
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin', 'index.html'));
+});
+
 // ─── START SERVER ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
+app.get('/', (req, res) => res.send('WICXA API Engine Active'));
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
