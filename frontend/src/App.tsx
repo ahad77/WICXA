@@ -35,13 +35,22 @@ const GoToTopButton = () => {
       style={{
         position: 'fixed', bottom: 32, right: 32, zIndex: 90,
         width: 48, height: 48, borderRadius: '50%',
-        background: 'var(--ink)', color: '#fff', border: 'none',
+        background: 'transparent', color: 'var(--ink)', border: '1.5px solid var(--ink)',
+        backdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
         transition: 'transform 0.3s ease, background 0.3s ease',
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px)')}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-4px)';
+        e.currentTarget.style.background = 'var(--ink)';
+        e.currentTarget.style.color = '#fff';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = 'var(--ink)';
+      }}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 15l-6-6-6 6" /></svg>
     </button>
@@ -89,6 +98,7 @@ const AIChatWidget = () => {
 
   return (
     <div style={{ position: 'fixed', bottom: 32, left: 32, zIndex: 99 }}>
+      {/* Chat Window */}
       {isOpen && (
         <div className="reveal visible" style={{
           position: 'absolute', bottom: 64, left: 0, width: 340, height: 480,
@@ -142,21 +152,31 @@ const AIChatWidget = () => {
         </div>
       )}
 
+      {/* Transparent Ghost Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="btn-shimmer"
         style={{
-          width: 52, height: 52, borderRadius: '50%', border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 6px 16px rgba(0,0,0,0.2)', transition: 'transform 0.3s ease'
+          width: 52, height: 52, borderRadius: '50%', 
+          background: 'transparent', color: 'var(--ink)', border: '1.5px solid var(--ink)', 
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(4px)', boxShadow: '0 6px 16px rgba(0,0,0,0.05)', 
+          transition: 'all 0.3s ease'
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px)')}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-4px)';
+          e.currentTarget.style.background = 'var(--ink)';
+          e.currentTarget.style.color = '#fff';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--ink)';
+        }}
       >
         {isOpen ? (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         ) : (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
         )}
       </button>
     </div>
@@ -269,20 +289,11 @@ const GlobalStyles = () => (
     .hero-word-3 { animation-delay: 0.6s; }
     .hero-word-4 { animation-delay: 0.85s; }
 
-    .hero-parallax { transition: transform 0.1s linear; will-change: transform; }
-
     .quick-add {
       transform: translateY(100%);
       transition: transform 0.38s cubic-bezier(0.22,1,0.36,1);
     }
     .product-card:hover .quick-add { transform: translateY(0); }
-
-    .nav-glass {
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      background: rgba(248,245,240,0.88);
-      border-bottom: 1px solid rgba(140,134,128,0.15);
-    }
 
     @keyframes overlayIn {
       from { opacity: 0; }
@@ -297,7 +308,6 @@ const GlobalStyles = () => (
     }
     .grid-item.visible { opacity: 1; transform: translateY(0); }
 
-    /* --- PREMIUM PHYSICS CURSOR STYLES --- */
     #cursor-dot {
       position: fixed; top: 0; left: 0;
       width: 6px; height: 6px;
@@ -467,7 +477,7 @@ const AnnouncementBar = () => {
   );
 };
 
-// ─── NAVBAR (UPDATED FOR LUXURY TRANSPARENCY) ─────────────────────────────────
+// ─── NAVBAR (UPDATED FOR 100% TRANSPARENCY) ───────────────────────────────────
 
 const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () => void }) => {
   const [scrolled, setScrolled] = useState(false);
@@ -475,7 +485,6 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
   const [badgePop, setBadgePop] = useState(false);
 
   useEffect(() => {
-    // 34px is the exact height of the announcement bar
     const onScroll = () => setScrolled(window.scrollY > 34);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
@@ -493,15 +502,14 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
   ];
 
   return (
-    <nav className={scrolled ? "nav-glass" : ""} style={{
+    <nav style={{
       position: 'fixed',
       top: scrolled ? 0 : 34, 
       left: 0, right: 0,
       zIndex: 50,
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: scrolled ? '12px 48px' : '24px 48px',
-      background: scrolled ? undefined : 'transparent',
-      borderBottom: scrolled ? undefined : '1px solid transparent',
+      background: 'transparent',
       transition: 'all 0.4s cubic-bezier(0.22,1,0.36,1)',
     }}>
       <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
@@ -905,7 +913,6 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
 
   if (!product) return <div style={{ padding: '120px 48px', textAlign: 'center', minHeight: '60vh' }}>Loading...</div>;
 
-  // INCREASED TOP PADDING TO CLEAR THE FLOATING NAVBAR
   return (
     <div className="page-enter" style={{ maxWidth: 1400, margin: '0 auto', padding: '120px 5% 60px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 60 }}>
@@ -1037,7 +1044,6 @@ const CartPage = ({ cartItems, setCart }: { cartItems: any[]; setCart: React.Dis
     );
   };
 
-  // INCREASED TOP PADDING
   return (
     <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 5% 80px', minHeight: '60vh' }}>
       <h1 className="reveal" style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 48, fontWeight: 300, letterSpacing: '0.1em', marginBottom: 48, borderBottom: '1px solid var(--warm-mid)', paddingBottom: 24 }}>
@@ -1288,7 +1294,6 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
 
   if (cartItems.length === 0) return null;
 
-  // INCREASED TOP PADDING
   return (
     <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 5% 60px', minHeight: '70vh' }}>
       <Link to="/cart" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--stone)', textDecoration: 'none', marginBottom: 32, fontFamily: 'Inter, sans-serif' }}>
@@ -1481,7 +1486,6 @@ const SignUpPage = () => {
     </div>
   );
 
-  // INCREASED TOP PADDING
   return (
     <div className="page-enter" style={{ minHeight: '100vh', display: 'flex' }}>
       <div style={{ flex: 1, display: 'none', position: 'relative', overflow: 'hidden' }} className="signup-left">

@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
 const app = express();
@@ -13,58 +13,60 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('🔥 Connected to MongoDB Atlas!'))
   .catch(err => console.error("Database connection error:", err));
 
-// ─── DATABASE SCHEMAS ─────────────────────────────────────────────────────────
+// ─── GEMINI AI SETUP ──────────────────────────────────────────────────────────
+// Ensure you have added GEMINI_API_KEY to your Render environment variables
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "MISSING_KEY");
 
-// Product Schema (unchanged — same shape your frontend already expects)
+// ─── DATABASE SCHEMAS ─────────────────────────────────────────────────────────
 const productSchema = new mongoose.Schema({
   id: String,
   name: String,
   price: String,
   description: String,
   category: String,
-  images: [String],
-  isActive: { type: Boolean, default: true }, // NEW — lets you hide a product without deleting it
-}, { timestamps: true });
+  images: [String]
+});
 const Product = mongoose.model('Product', productSchema);
 
-// Order Schema (unchanged)
 const orderSchema = new mongoose.Schema({
   orderId: String,
-  customer: {
-    name: String,
-    phone: String,
-    address: String,
-    email: String,
-  },
+  customer: { name: String, phone: String, address: String, email: String },
   deliveryZone: String,
   items: Array,
-  totals: {
-    subtotal: Number,
-    deliveryFee: Number,
-    discount: Number,
-    grandTotal: Number
-  },
+  totals: { subtotal: Number, deliveryFee: Number, discount: Number, grandTotal: Number },
   createdAt: { type: Date, default: Date.now }
 });
 const Order = mongoose.model('Order', orderSchema);
 
-// ─── STATIC FILES ─────────────────────────────────────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));   // serves uploaded product images
-app.use('/admin', express.static(path.join(__dirname, 'public')));      // serves the admin panel UI
-
-// ─── EXISTING PUBLIC ROUTES (unchanged — your frontend keeps working as-is) ───
+// ─── ROUTES ───────────────────────────────────────────────────────────────────
 
 // 1. Get all products
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await Product.find({ isActive: { $ne: false } });
+    const products = await Product.find();
     res.json(products);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// 2. Submit a new order
+// 2. Upload/Add new product (Requires ADMIN_SECRET_KEY in Render)
+app.post('/api/products', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'];
+  if (adminKey !== process.env.ADMIN_SECRET_KEY) {
+    return res.status(401).json({ message: "Unauthorized. Invalid Admin Key." });
+  }
+
+  try {
+    const newProduct = new Product(req.body);
+    const savedProduct = await newProduct.save();
+    res.status(201).json({ message: "Product added successfully!", product: savedProduct });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// 3. Submit a new order
 app.post('/api/orders', async (req, res) => {
   try {
     const newOrder = new Order(req.body);
@@ -75,17 +77,43 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// ─── NEW: ADMIN ROUTES (protected — for uploading/managing products) ─────────
-const adminProductRoutes = require('./routes/adminProducts')(Product);
-app.use('/api/admin', adminProductRoutes);
+// 4. Validate Coupon
+app.post('/api/coupons/validate', (req, res) => {
+  const { code, subtotal } = req.body;
+  if (code === 'WICXA10') {
+    res.json({ discount: subtotal * 0.10, message: '10% Discount Applied!' });
+  } else if (code === 'FREESHIP') {
+    res.json({ discount: 150, message: 'Free Shipping Applied!' }); // Max shipping deduction
+  } else {
+    res.status(400).json({ message: 'Invalid coupon code' });
+  }
+});
 
-// ─── NEW: ADMIN ORDER VIEW (so you can see incoming orders too) ──────────────
-const adminOrderRoutes = require('./routes/adminOrders')(Order);
-app.use('/api/admin', adminOrderRoutes);
+// 5. Gemini AI Chatbot Route
+app.post('/api/chat', async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: "Message is required" });
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `
+      You are the official luxury styling assistant for WICXA, a premium streetwear and clothing brand in Bangladesh. 
+      Keep your answers short, stylish, and highly professional. Limit responses to 2-3 sentences. 
+      Prices are in BDT. Delivery inside Chattogram is BDT 80-150, outside is BDT 130. 
+      Customer says: "${message}"
+    `;
+    const result = await model.generateContent(prompt);
+    const response = await result.response.text();
+    
+    res.json({ response });
+  } catch (error) {
+    console.error("AI Error:", error);
+    res.status(500).json({ error: "Failed to generate AI response" });
+  }
+});
 
 // ─── START SERVER ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🛠️  Admin panel available at /admin`);
 });
