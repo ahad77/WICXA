@@ -59,7 +59,6 @@ const AIChatWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to the bottom of the chat when new messages appear
   useEffect(() => {
     if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
@@ -74,7 +73,6 @@ const AIChatWidget = () => {
     setIsLoading(true);
 
     try {
-      // Connect to your live backend Gemini route
       const res = await fetch('https://wicxa.onrender.com/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,14 +89,12 @@ const AIChatWidget = () => {
 
   return (
     <div style={{ position: 'fixed', bottom: 32, left: 32, zIndex: 99 }}>
-      {/* Chat Window */}
       {isOpen && (
         <div className="reveal visible" style={{
           position: 'absolute', bottom: 64, left: 0, width: 340, height: 480,
           background: '#fff', border: '1px solid var(--warm-mid)', borderRadius: 4,
           boxShadow: '0 12px 40px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden'
         }}>
-          {/* Header */}
           <div style={{ background: 'var(--ink)', color: '#fff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 8, height: 8, background: '#27ae60', borderRadius: '50%' }} />
@@ -109,7 +105,6 @@ const AIChatWidget = () => {
             </button>
           </div>
           
-          {/* Messages Area */}
           <div style={{ flex: 1, padding: 20, overflowY: 'auto', background: 'var(--cream)', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.map((msg, i) => (
               <div key={i} style={{
@@ -134,7 +129,6 @@ const AIChatWidget = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Form */}
           <form onSubmit={handleSend} style={{ display: 'flex', borderTop: '1px solid var(--warm-mid)', background: '#fff' }}>
             <input 
               value={input} onChange={(e) => setInput(e.target.value)}
@@ -148,7 +142,6 @@ const AIChatWidget = () => {
         </div>
       )}
 
-      {/* Floating Toggle Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="btn-shimmer"
@@ -195,7 +188,6 @@ const GlobalStyles = () => (
       overflow-x: hidden;
     }
 
-    /* Force hide the default cursor everywhere */
     body, a, button, input { cursor: none !important; }
 
     .page-enter { animation: pageIn 0.6s cubic-bezier(0.22,1,0.36,1) forwards; }
@@ -329,7 +321,7 @@ const GlobalStyles = () => (
     body:has(a:hover) #cursor-ring,
     body:has(button:hover) #cursor-ring {
       width: 60px; height: 60px;
-      background-color: rgba(201,169,110,0.1); /* Subtle gold tint on hover */
+      background-color: rgba(201,169,110,0.1);
       border-color: var(--accent);
     }
     body:has(a:hover) #cursor-dot,
@@ -350,7 +342,6 @@ const GlobalStyles = () => (
     .toast-in  { animation: toastIn 0.4s cubic-bezier(0.22,1,0.36,1) forwards; }
     .toast-out { animation: toastOut 0.4s ease forwards; }
 
-    /* New premium loader spin animation */
     @keyframes spin { 100% { transform: rotate(360deg); } }
   `}</style>
 );
@@ -399,22 +390,18 @@ const CustomCursor = () => {
   const ringRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>(0);
   
-  // Track raw mouse position
   const mouse = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-  // Track delayed ring position
   const ring = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       mouse.current = { x: e.clientX, y: e.clientY };
-      // Move dot instantly
       if (dotRef.current) {
         dotRef.current.style.transform = `translate3d(calc(${e.clientX}px - 50%), calc(${e.clientY}px - 50%), 0)`;
       }
     };
 
     const renderLoop = () => {
-      // Smooth Lerp (Linear Interpolation) formula for the trailing ring
       ring.current.x += (mouse.current.x - ring.current.x) * 0.15;
       ring.current.y += (mouse.current.y - ring.current.y) * 0.15;
       
@@ -480,7 +467,7 @@ const AnnouncementBar = () => {
   );
 };
 
-// ─── NAVBAR ───────────────────────────────────────────────────────────────────
+// ─── NAVBAR (UPDATED FOR LUXURY TRANSPARENCY) ─────────────────────────────────
 
 const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () => void }) => {
   const [scrolled, setScrolled] = useState(false);
@@ -488,7 +475,8 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
   const [badgePop, setBadgePop] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    // 34px is the exact height of the announcement bar
+    const onScroll = () => setScrolled(window.scrollY > 34);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -505,11 +493,16 @@ const Navbar = ({ cartCount, openSearch }: { cartCount: number; openSearch: () =
   ];
 
   return (
-    <nav className="nav-glass" style={{
-      position: 'sticky', top: 0, zIndex: 50,
+    <nav className={scrolled ? "nav-glass" : ""} style={{
+      position: 'fixed',
+      top: scrolled ? 0 : 34, 
+      left: 0, right: 0,
+      zIndex: 50,
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: scrolled ? '12px 48px' : '18px 48px',
-      transition: 'padding 0.4s ease',
+      padding: scrolled ? '12px 48px' : '24px 48px',
+      background: scrolled ? undefined : 'transparent',
+      borderBottom: scrolled ? undefined : '1px solid transparent',
+      transition: 'all 0.4s cubic-bezier(0.22,1,0.36,1)',
     }}>
       <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
         <img src={logo} alt="WICXA Logo" style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }} />
@@ -912,8 +905,9 @@ const ProductDetailPage = ({ addToCart, products }: any) => {
 
   if (!product) return <div style={{ padding: '120px 48px', textAlign: 'center', minHeight: '60vh' }}>Loading...</div>;
 
+  // INCREASED TOP PADDING TO CLEAR THE FLOATING NAVBAR
   return (
-    <div className="page-enter" style={{ maxWidth: 1400, margin: '0 auto', padding: '60px 5%' }}>
+    <div className="page-enter" style={{ maxWidth: 1400, margin: '0 auto', padding: '120px 5% 60px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 60 }}>
         {/* Images */}
         <div>
@@ -1043,8 +1037,9 @@ const CartPage = ({ cartItems, setCart }: { cartItems: any[]; setCart: React.Dis
     );
   };
 
+  // INCREASED TOP PADDING
   return (
-    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 5%', minHeight: '60vh' }}>
+    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 5% 80px', minHeight: '60vh' }}>
       <h1 className="reveal" style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 48, fontWeight: 300, letterSpacing: '0.1em', marginBottom: 48, borderBottom: '1px solid var(--warm-mid)', paddingBottom: 24 }}>
         Your Bag
       </h1>
@@ -1293,8 +1288,9 @@ const CheckoutPage = ({ cartItems, setCart, setToast }: { cartItems: any[]; setC
 
   if (cartItems.length === 0) return null;
 
+  // INCREASED TOP PADDING
   return (
-    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 5%', minHeight: '70vh' }}>
+    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 5% 60px', minHeight: '70vh' }}>
       <Link to="/cart" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--stone)', textDecoration: 'none', marginBottom: 32, fontFamily: 'Inter, sans-serif' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
         Back to Bag
@@ -1485,6 +1481,7 @@ const SignUpPage = () => {
     </div>
   );
 
+  // INCREASED TOP PADDING
   return (
     <div className="page-enter" style={{ minHeight: '100vh', display: 'flex' }}>
       <div style={{ flex: 1, display: 'none', position: 'relative', overflow: 'hidden' }} className="signup-left">
@@ -1502,7 +1499,7 @@ const SignUpPage = () => {
         </div>
       </div>
 
-      <div style={{ width: '100%', maxWidth: 520, margin: '0 auto', padding: '60px 48px 80px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 520, margin: '0 auto', padding: '120px 48px 80px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <Link to="/" style={{ textDecoration: 'none', marginBottom: 48, display: 'block' }}>
           <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 22, fontWeight: 600, letterSpacing: '0.22em', color: 'var(--ink)' }}>WICXA</span>
         </Link>
@@ -1792,7 +1789,6 @@ const App = () => {
         <Footer />
         <GoToTopButton />
         
-        {/* ADD THE WIDGET HERE, RIGHT ABOVE THE CLOSING DIV */}
         <AIChatWidget />
       </div>
     </Router>
